@@ -283,13 +283,21 @@ impl WindowManager {
                     }
                 }
 
+                let work_area = self.focused_monitor_work_area()?;
+                let invisible_borders = self.invisible_borders;
                 let behaviour = self.window_container_behaviour;
                 let workspace = self.focused_workspace_mut()?;
 
                 if !workspace.contains_window(window.hwnd) {
                     match behaviour {
                         WindowContainerBehaviour::Create => {
-                            workspace.new_container_for_window(*window);
+                            if window.should_float() {
+                                workspace.floating_windows_mut().push(*window);
+                                window.center(&work_area, &invisible_borders)?;
+                                window.focus(self.mouse_follows_focus)?;
+                            } else {
+                                workspace.new_container_for_window(*window);
+                            }
                             self.update_focused_workspace(false)?;
                         }
                         WindowContainerBehaviour::Append => {

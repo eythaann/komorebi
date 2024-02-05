@@ -487,7 +487,7 @@ impl WindowManager {
 
     #[allow(clippy::too_many_arguments)]
     #[tracing::instrument(skip(self))]
-    fn add_window_handle_to_move_based_on_workspace_rule(
+    fn add_window_handle_to_move(
         &self,
         window_title: &String,
         hwnd: isize,
@@ -514,9 +514,45 @@ impl WindowManager {
         });
     }
 
+    fn add_window_handle_to_move_based_on_workspace_rule(
+        &self,
+        window: &Window,
+        origin_monitor_idx: usize,
+        origin_workspace_idx: usize,
+        to_move: &mut Vec<EnforceWorkspaceRuleOp>,
+    ) -> Result<()> {
+        let workspace_rules = WORKSPACE_RULES.lock();
+        let mut already_moved_window_handles = self.already_moved_window_handles.lock();
+        let mut found_workspace_rule = workspace_rules.get(&window.exe()?);
+
+        if found_workspace_rule.is_none() {
+            found_workspace_rule = workspace_rules.get(&window.title()?);
+        }
+
+        // If the executable names or titles of any of those windows are in our rules map
+        if let Some((monitor_idx, workspace_idx, apply_on_first_show_only)) = found_workspace_rule {
+            if !*apply_on_first_show_only || !already_moved_window_handles.contains(&window.hwnd) {
+                if *apply_on_first_show_only {
+                    already_moved_window_handles.insert(window.hwnd);
+                }
+                self.add_window_handle_to_move(
+                    &window.title()?,
+                    window.hwnd,
+                    origin_monitor_idx,
+                    origin_workspace_idx,
+                    *monitor_idx,
+                    *workspace_idx,
+                    to_move,
+                );
+            }
+        }
+
+        Ok(())
+    }
+
     #[tracing::instrument(skip(self))]
     pub fn enforce_workspace_rules(&mut self) -> Result<()> {
-        let mut to_move = vec![];
+        let mut to_move: Vec<EnforceWorkspaceRuleOp> = vec![];
 
         let focused_monitor_idx = self.focused_monitor_idx();
         let focused_workspace_idx = self
@@ -525,50 +561,20 @@ impl WindowManager {
             .ok_or_else(|| anyhow!("there is no monitor with that index"))?
             .focused_workspace_idx();
 
-        let workspace_rules = WORKSPACE_RULES.lock();
-        // Go through all the monitors and workspaces
-        for (i, monitor) in self.monitors().iter().enumerate() {
-            for (j, workspace) in monitor.workspaces().iter().enumerate() {
-                // And all the visible windows (at the top of a container)
-                for window in workspace.visible_windows().into_iter().flatten() {
-                    let mut already_moved_window_handles = self.already_moved_window_handles.lock();
-
-                    let mut found_workspace_rule = workspace_rules.get(&window.exe()?);
-
-                    if found_workspace_rule.is_none() {
-                        found_workspace_rule = workspace_rules.get(&window.title()?);
-                    }
-
-                    // If the executable names or titles of any of those windows are in our rules map
-                    if let Some((monitor_idx, workspace_idx, apply_on_first_show_only)) =
-                        found_workspace_rule
-                    {
-                        if *apply_on_first_show_only {
-                            if !already_moved_window_handles.contains(&window.hwnd) {
-                                already_moved_window_handles.insert(window.hwnd);
-
-                                self.add_window_handle_to_move_based_on_workspace_rule(
-                                    &window.title()?,
-                                    window.hwnd,
-                                    i,
-                                    j,
-                                    *monitor_idx,
-                                    *workspace_idx,
-                                    &mut to_move,
-                                );
-                            }
-                        } else {
-                            self.add_window_handle_to_move_based_on_workspace_rule(
-                                &window.title()?,
-                                window.hwnd,
-                                i,
-                                j,
-                                *monitor_idx,
-                                *workspace_idx,
-                                &mut to_move,
-                            );
-                        }
-                    }
+        for (origin_monitor_idx, monitor) in self.monitors().iter().enumerate() {
+            for (origin_workspace_idx, workspace) in monitor.workspaces().iter().enumerate() {
+                for window in workspace
+                    .visible_windows()
+                    .into_iter()
+                    .flatten()
+                    .chain(workspace.floating_windows())
+                {
+                    self.add_window_handle_to_move_based_on_workspace_rule(
+                        window,
+                        origin_monitor_idx,
+                        origin_workspace_idx,
+                        &mut to_move,
+                    )?
                 }
             }
         }
@@ -601,6 +607,8 @@ impl WindowManager {
 
         // Parse the operation again and associate those removed windows with the workspace that
         // their rules have defined for them
+        let work_area = self.focused_monitor_work_area()?;
+        let invisible_borders = self.invisible_borders;
         for op in &to_move {
             let target_monitor = self
                 .monitors_mut()
@@ -622,7 +630,13 @@ impl WindowManager {
                 .get_mut(op.target_workspace_idx)
                 .ok_or_else(|| anyhow!("there is no workspace with that index"))?;
 
-            target_workspace.new_container_for_window(Window { hwnd: op.hwnd });
+            let mut window = Window { hwnd: op.hwnd };
+            if window.should_float() {
+                target_workspace.floating_windows_mut().push(window);
+                window.center(&work_area, &invisible_borders)?;
+            } else {
+                target_workspace.new_container_for_window(window);
+            }
         }
 
         // Only re-tile the focused workspace if we need to
@@ -975,6 +989,10 @@ impl WindowManager {
 
                         window.restore();
                     }
+                }
+
+                for window in workspace.floating_windows() {
+                    window.restore();
                 }
             }
         }
@@ -1508,7 +1526,7 @@ impl WindowManager {
     }
 
     #[tracing::instrument(skip(self))]
-    pub fn toggle_float(&mut self) -> Result<()> {
+    pub fn toggle_float_on_focused_window(&mut self) -> Result<()> {
         let hwnd = WindowsApi::foreground_window()?;
         let workspace = self.focused_workspace_mut()?;
 
@@ -1521,23 +1539,23 @@ impl WindowManager {
         }
 
         if is_floating_window {
-            self.unfloat_window()?;
+            self.unfloat_focused_window()?;
         } else {
-            self.float_window()?;
+            self.float_focused_window()?;
         }
 
         self.update_focused_workspace(is_floating_window)
     }
 
     #[tracing::instrument(skip(self))]
-    pub fn float_window(&mut self) -> Result<()> {
+    pub fn float_focused_window(&mut self) -> Result<()> {
         tracing::info!("floating window");
 
         let work_area = self.focused_monitor_work_area()?;
         let invisible_borders = self.invisible_borders;
 
         let workspace = self.focused_workspace_mut()?;
-        workspace.new_floating_window()?;
+        workspace.float_focused_window()?;
 
         let window = workspace
             .floating_windows_mut()
@@ -1551,7 +1569,7 @@ impl WindowManager {
     }
 
     #[tracing::instrument(skip(self))]
-    pub fn unfloat_window(&mut self) -> Result<()> {
+    pub fn unfloat_focused_window(&mut self) -> Result<()> {
         tracing::info!("unfloating window");
 
         let workspace = self.focused_workspace_mut()?;
@@ -2138,6 +2156,13 @@ impl WindowManager {
             .focused_monitor()
             .ok_or_else(|| anyhow!("there is no monitor"))?
             .size())
+    }
+
+    pub fn focused_monitor_work_area_mut(&mut self) -> Result<Rect> {
+        Ok(*self
+            .focused_monitor()
+            .ok_or_else(|| anyhow!("there is no monitor"))?
+            .work_area_size())
     }
 
     pub fn focused_monitor_work_area(&self) -> Result<Rect> {

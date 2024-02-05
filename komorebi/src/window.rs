@@ -493,6 +493,23 @@ impl Window {
 
         Ok(false)
     }
+
+    pub fn should_float(self) -> bool {
+        let regex_identifiers = REGEX_IDENTIFIERS.lock();
+        let float_identifiers = FLOAT_IDENTIFIERS.lock();
+
+        if let (Ok(title), Ok(exe_name), Ok(class)) = (self.title(), self.exe(), self.class()) {
+            return should_act(
+                &title,
+                &exe_name,
+                &class,
+                &float_identifiers,
+                &regex_identifiers,
+            );
+        }
+
+        return false;
+    }
 }
 
 fn window_is_eligible(
@@ -512,15 +529,6 @@ fn window_is_eligible(
 
     let regex_identifiers = REGEX_IDENTIFIERS.lock();
 
-    let float_identifiers = FLOAT_IDENTIFIERS.lock();
-    let should_float = should_act(
-        title,
-        exe_name,
-        class,
-        &float_identifiers,
-        &regex_identifiers,
-    );
-
     let manage_identifiers = MANAGE_IDENTIFIERS.lock();
     let managed_override = should_act(
         title,
@@ -529,10 +537,6 @@ fn window_is_eligible(
         &manage_identifiers,
         &regex_identifiers,
     );
-
-    if should_float && !managed_override {
-        return false;
-    }
 
     let layered_whitelist = LAYERED_WHITELIST.lock();
     let allow_layered = should_act(

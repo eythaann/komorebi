@@ -217,7 +217,7 @@ impl WindowManager {
             }
             SocketMessage::Close => self.focused_window()?.close()?,
             SocketMessage::Minimize => self.focused_window()?.minimize(),
-            SocketMessage::ToggleFloat => self.toggle_float()?,
+            SocketMessage::ToggleFloat => self.toggle_float_on_focused_window()?,
             SocketMessage::ToggleMonocle => self.toggle_monocle()?,
             SocketMessage::ToggleMaximize => self.toggle_maximize()?,
             SocketMessage::ContainerPadding(monitor_idx, workspace_idx, size) => {

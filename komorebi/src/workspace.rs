@@ -732,7 +732,7 @@ impl Workspace {
         self.focus_container(next_idx);
     }
 
-    pub fn new_floating_window(&mut self) -> Result<()> {
+    pub fn float_focused_window(&mut self) -> Result<()> {
         let window = if let Some(maximized_window) = self.maximized_window() {
             let window = *maximized_window;
             self.set_maximized_window(None);
