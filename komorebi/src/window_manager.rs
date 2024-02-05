@@ -59,6 +59,7 @@ use crate::NO_TITLEBAR;
 use crate::OBJECT_NAME_CHANGE_ON_LAUNCH;
 use crate::REMOVE_TITLEBARS;
 use crate::TRAY_AND_MULTI_WINDOW_IDENTIFIERS;
+use crate::UNMANAGE_IDENTIFIERS;
 use crate::WORKSPACE_RULES;
 
 #[derive(Debug)]
@@ -98,6 +99,7 @@ pub struct State {
     pub has_pending_raise_op: bool,
     pub remove_titlebars: bool,
     pub float_identifiers: Vec<IdWithIdentifier>,
+    pub unmanage_identifiers: Vec<IdWithIdentifier>,
     pub manage_identifiers: Vec<IdWithIdentifier>,
     pub layered_whitelist: Vec<IdWithIdentifier>,
     pub tray_and_multi_window_identifiers: Vec<IdWithIdentifier>,
@@ -128,6 +130,7 @@ impl From<&WindowManager> for State {
             has_pending_raise_op: wm.has_pending_raise_op,
             remove_titlebars: REMOVE_TITLEBARS.load(Ordering::SeqCst),
             float_identifiers: FLOAT_IDENTIFIERS.lock().clone(),
+            unmanage_identifiers: UNMANAGE_IDENTIFIERS.lock().clone(),
             manage_identifiers: MANAGE_IDENTIFIERS.lock().clone(),
             layered_whitelist: LAYERED_WHITELIST.lock().clone(),
             tray_and_multi_window_identifiers: TRAY_AND_MULTI_WINDOW_IDENTIFIERS.lock().clone(),

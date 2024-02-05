@@ -1,4 +1,5 @@
 use crate::com::SetCloak;
+use crate::UNMANAGE_IDENTIFIERS;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::fmt::Display;
@@ -209,7 +210,7 @@ impl Window {
             HidingBehaviour::Minimize => {
                 WindowsApi::restore_window(self.hwnd());
                 sleep(Duration::from_millis(35));
-            },
+            }
             HidingBehaviour::Cloak => SetCloak(self.hwnd(), 1, 0),
         }
     }
@@ -529,23 +530,18 @@ fn window_is_eligible(
 
     let regex_identifiers = REGEX_IDENTIFIERS.lock();
 
-    let manage_identifiers = MANAGE_IDENTIFIERS.lock();
-    let managed_override = should_act(
-        title,
-        exe_name,
-        class,
-        &manage_identifiers,
-        &regex_identifiers,
-    );
+    let _should_act = |identifiers: &[IdWithIdentifier]| -> bool {
+        should_act(title, exe_name, class, identifiers, &regex_identifiers)
+    };
 
-    let layered_whitelist = LAYERED_WHITELIST.lock();
-    let allow_layered = should_act(
-        title,
-        exe_name,
-        class,
-        &layered_whitelist,
-        &regex_identifiers,
-    );
+    let should_not_manage = _should_act(&UNMANAGE_IDENTIFIERS.lock());
+    let force_window_manage = _should_act(&MANAGE_IDENTIFIERS.lock());
+
+    if should_not_manage && !force_window_manage {
+        return false;
+    }
+
+    let allow_layered = _should_act(&LAYERED_WHITELIST.lock());
 
     // TODO: might need this for transparency
     // let allow_layered = true;
@@ -567,7 +563,7 @@ fn window_is_eligible(
                         // allowing a specific layered window on the whitelist (like Steam), it should
                         // pass this check
                         && (allow_layered || !ex_style.contains(ExtendedWindowStyle::LAYERED))
-        || managed_override
+        || force_window_manage
     {
         return true;
     } else if event.is_some() {

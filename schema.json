@@ -225,6 +225,16 @@
         "$ref": "#/definitions/IdWithIdentifier"
       }
     },
+    "unmanage_rules": {
+      "description": "Unmanaged windows rules (can work as pinned windows)",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/IdWithIdentifier"
+      }
+    },
     "unmanaged_window_operation_behaviour": {
       "description": "Determine what happens when commands are sent while an unmanaged window is in the foreground (default: Op)",
       "anyOf": [
