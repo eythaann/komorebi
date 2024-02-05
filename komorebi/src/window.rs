@@ -1,4 +1,5 @@
 use crate::com::SetCloak;
+use crate::EXCLUDE_FLOAT_IDENTIFIERS;
 use crate::UNMANAGE_IDENTIFIERS;
 use std::collections::HashMap;
 use std::convert::TryFrom;
@@ -496,17 +497,13 @@ impl Window {
     }
 
     pub fn should_float(self) -> bool {
-        let regex_identifiers = REGEX_IDENTIFIERS.lock();
-        let float_identifiers = FLOAT_IDENTIFIERS.lock();
-
         if let (Ok(title), Ok(exe_name), Ok(class)) = (self.title(), self.exe(), self.class()) {
-            return should_act(
-                &title,
-                &exe_name,
-                &class,
-                &float_identifiers,
-                &regex_identifiers,
-            );
+            let _should_act = |identifiers: &[IdWithIdentifier]| -> bool {
+                should_act(&title, &exe_name, &class, identifiers, &REGEX_IDENTIFIERS.lock())
+            };
+            let should_float = _should_act(&FLOAT_IDENTIFIERS.lock());
+            let is_excluded = _should_act(&EXCLUDE_FLOAT_IDENTIFIERS.lock());
+            return should_float && !is_excluded;
         }
 
         return false;

@@ -20,6 +20,7 @@ use crate::DATA_DIR;
 use crate::DEFAULT_CONTAINER_PADDING;
 use crate::DEFAULT_WORKSPACE_PADDING;
 use crate::DISPLAY_INDEX_PREFERENCES;
+use crate::EXCLUDE_FLOAT_IDENTIFIERS;
 use crate::FLOAT_IDENTIFIERS;
 use crate::HIDING_BEHAVIOUR;
 use crate::LAYERED_WHITELIST;
@@ -297,6 +298,9 @@ pub struct StaticConfig {
     /// Individual window floating rules
     #[serde(skip_serializing_if = "Option::is_none")]
     pub float_rules: Option<Vec<IdWithIdentifier>>,
+    /// Individual excluded window floating rules
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub exclude_float_rules: Option<Vec<IdWithIdentifier>>,
     /// Individual unmanaged windows
     #[serde(skip_serializing_if = "Option::is_none")]
     pub unmanage_rules: Option<Vec<IdWithIdentifier>>,
@@ -435,6 +439,7 @@ impl From<&WindowManager> for StaticConfig {
             window_hiding_behaviour: Option::from(*HIDING_BEHAVIOUR.lock()),
             global_work_area_offset: value.work_area_offset,
             float_rules: None,
+            exclude_float_rules: None,
             manage_rules: None,
             unmanage_rules: None,
             border_overflow_applications: None,
@@ -548,19 +553,20 @@ impl StaticConfig {
             );
         }
 
-        let mut float_identifiers = FLOAT_IDENTIFIERS.lock();
+        let mut float_identifiers: parking_lot::lock_api::MutexGuard<'_, parking_lot::RawMutex, Vec<IdWithIdentifier>> = FLOAT_IDENTIFIERS.lock();
+        let mut exclude_float_identifiers = EXCLUDE_FLOAT_IDENTIFIERS.lock();
         let mut unmanage_identifiers = UNMANAGE_IDENTIFIERS.lock();
-        let mut regex_identifiers = REGEX_IDENTIFIERS.lock();
         let mut manage_identifiers = MANAGE_IDENTIFIERS.lock();
+        let mut regex_identifiers = REGEX_IDENTIFIERS.lock();
         let mut tray_and_multi_window_identifiers = TRAY_AND_MULTI_WINDOW_IDENTIFIERS.lock();
         let mut border_overflow_identifiers = BORDER_OVERFLOW_IDENTIFIERS.lock();
         let mut object_name_change_identifiers = OBJECT_NAME_CHANGE_ON_LAUNCH.lock();
         let mut layered_identifiers = LAYERED_WHITELIST.lock();
 
         Self::apply_global(&mut self.float_rules, &mut float_identifiers, &mut regex_identifiers)?;
+        Self::apply_global(&mut self.exclude_float_rules, &mut exclude_float_identifiers, &mut regex_identifiers)?;
         Self::apply_global(&mut self.manage_rules, &mut manage_identifiers, &mut regex_identifiers)?;
         Self::apply_global(&mut self.unmanage_rules, &mut unmanage_identifiers, &mut regex_identifiers)?;
-
         
         Self::apply_global(&mut self.object_name_change_applications, &mut object_name_change_identifiers, &mut regex_identifiers)?;
         Self::apply_global(&mut self.layered_applications, &mut layered_identifiers, &mut regex_identifiers)?;

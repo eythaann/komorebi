@@ -107,6 +107,16 @@
       ],
       "format": "int32"
     },
+    "exclude_float_rules": {
+      "description": "Exclude floating rules",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/IdWithIdentifier"
+      }
+    },
     "float_rules": {
       "description": "Individual window floating rules",
       "type": [
