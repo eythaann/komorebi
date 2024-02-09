@@ -149,6 +149,20 @@ impl Workspace {
     }
 
     pub fn get_window_to_be_maximized(&self) -> Option<&Window> {
+        if let Some(container) = self.monocle_container() {
+            for window in container.windows() {
+                if window.is_programmatically_maximized() {
+                    return Some(window);
+                }
+            }
+        }
+
+        for window in self.floating_windows() {
+            if window.is_programmatically_maximized() {
+                return Some(window);
+            }
+        }
+
         for container in self.containers() {
             for window in container.windows() {
                 if window.is_programmatically_maximized() {
@@ -161,16 +175,24 @@ impl Workspace {
 
     pub fn restore(&mut self, mouse_follows_focus: bool) -> Result<()> {
         if let Some(maximized) = self.get_window_to_be_maximized() {
-                maximized.maximize();
-                maximized.focus(mouse_follows_focus)?;
-        } else {
-            for container in self.containers_mut() {
-                container.restore()?;
+            maximized.maximize();
+            maximized.focus(mouse_follows_focus)?;
+
+            for window in self.floating_windows() {
+                if window.hwnd != maximized.hwnd {
+                    window.restore()?;
+                }
             }
 
-            if let Some(container) = self.monocle_container_mut() {
-                container.restore()?;
-            }
+            return Ok(());
+        }
+
+        for container in self.containers_mut() {
+            container.restore()?;
+        }
+
+        if let Some(container) = self.monocle_container_mut() {
+            container.restore()?;
         }
 
         for window in self.floating_windows() {

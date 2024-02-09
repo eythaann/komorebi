@@ -1571,7 +1571,7 @@ impl WindowManager {
         let workspace = self.focused_workspace_mut()?;
         workspace.float_focused_window()?;
         workspace.unmaximize_focused_window(mouse_follows_focus)?;
-        
+
         let window = workspace
             .floating_windows_mut()
             .last_mut()
@@ -1585,9 +1585,10 @@ impl WindowManager {
     #[tracing::instrument(skip(self))]
     pub fn unfloat_focused_window(&mut self) -> Result<()> {
         tracing::info!("unfloating window");
-
+        let mouse_follows_focus = self.mouse_follows_focus;
         let workspace = self.focused_workspace_mut()?;
-        workspace.unfloat_focused_window()
+        workspace.unfloat_focused_window()?;
+        workspace.unmaximize_focused_window(mouse_follows_focus)
     }
 
     #[tracing::instrument(skip(self))]
