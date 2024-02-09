@@ -1,7 +1,11 @@
 use std::collections::VecDeque;
+use std::sync::atomic::Ordering;
+use std::thread::sleep;
+use std::time::Duration;
 
 use color_eyre::eyre::Result;
 use getset::Getters;
+use komorebi_core::HidingBehaviour;
 use nanoid::nanoid;
 use schemars::JsonSchema;
 use serde::Serialize;
@@ -9,6 +13,7 @@ use windows::Win32::Foundation::HWND;
 
 use crate::ring::Ring;
 use crate::window::Window;
+use crate::{FINISH_MINIMIZE_ANIMATION, HIDING_BEHAVIOUR};
 
 #[derive(Debug, Clone, Serialize, Getters, JsonSchema)]
 pub struct Container {
@@ -16,6 +21,7 @@ pub struct Container {
     #[getset(get = "pub")]
     id: String,
     windows: Ring<Window>,
+    wait_for_minimization: bool,
 }
 
 impl_ring_elements!(Container, Window);
@@ -25,6 +31,7 @@ impl Default for Container {
         Self {
             id: nanoid!(),
             windows: Ring::default(),
+            wait_for_minimization: FINISH_MINIMIZE_ANIMATION.load(Ordering::SeqCst),
         }
     }
 }
@@ -54,12 +61,21 @@ impl Container {
     pub fn load_focused_window(&mut self) -> Result<()> {
         let focused_idx = self.focused_window_idx();
         for (i, window) in self.windows_mut().iter_mut().enumerate() {
-            if i == focused_idx {
-                window.restore()?;
-            } else {
+            if i != focused_idx {
                 window.hide();
             }
         }
+
+        if let HidingBehaviour::Minimize = *HIDING_BEHAVIOUR.lock() {
+            if self.wait_for_minimization {
+                sleep(Duration::from_millis(200));
+            }
+        }
+
+        if let Some(window) = self.focused_window_mut() {
+            window.restore()?;
+        }
+
         Ok(())
     }
 

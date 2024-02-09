@@ -1,6 +1,7 @@
 use crate::com::SetCloak;
 use crate::EXCLUDE_FLOAT_IDENTIFIERS;
 use crate::UNMANAGE_IDENTIFIERS;
+use crate::NATIVE_ANIMATION_DELAY;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::fmt::Display;
@@ -225,6 +226,10 @@ impl Window {
         }
     }
 
+    fn wait_native_animation(self) {
+        sleep(Duration::from_millis(NATIVE_ANIMATION_DELAY.load(Ordering::SeqCst)));
+    }
+
     pub fn restore(self) -> Result<()> {
         self.remove_from_hidden_hwnds();
         let hiding_behaviour = HIDING_BEHAVIOUR.lock();
@@ -234,9 +239,9 @@ impl Window {
                 let wait = self.is_miminized();
                 WindowsApi::restore_window(self.hwnd());
                 if wait {
-                    sleep(Duration::from_millis(35));
+                    self.wait_native_animation();
                 }
-            }
+            },
             HidingBehaviour::Cloak => SetCloak(self.hwnd(), 1, 0),
         };
         Ok(())
@@ -247,7 +252,7 @@ impl Window {
             return;
         }
         WindowsApi::minimize_window(self.hwnd());
-        sleep(Duration::from_millis(35));
+        self.wait_native_animation();
     }
 
     pub fn close(self) -> Result<()> {

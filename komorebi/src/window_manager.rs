@@ -1082,12 +1082,12 @@ impl WindowManager {
         // Set the focused workspaces for the first and second monitors
         if let Some(first_monitor) = self.monitors_mut().get_mut(first_idx) {
             first_monitor.focus_workspace(second_focused_workspace)?;
-            first_monitor.load_focused_workspace(mouse_follows_focus, false)?;
+            first_monitor.load_focused_workspace(mouse_follows_focus)?;
         }
 
         if let Some(second_monitor) = self.monitors_mut().get_mut(second_idx) {
             second_monitor.focus_workspace(first_focused_workspace)?;
-            second_monitor.load_focused_workspace(mouse_follows_focus, false)?;
+            second_monitor.load_focused_workspace(mouse_follows_focus)?;
         }
 
         self.update_focused_workspace_by_monitor_idx(second_idx)?;
@@ -1138,7 +1138,7 @@ impl WindowManager {
 
         let mut target_monitor = focused_monitor;
         if is_moving_to_other_monitor {
-            target_monitor.load_focused_workspace(mouse_follows_focus, true)?;
+            target_monitor.load_focused_workspace(mouse_follows_focus)?;
             target_monitor.update_focused_workspace(offset, &invisible_borders)?;
             target_monitor = self
                 .monitors_mut()
@@ -1169,7 +1169,7 @@ impl WindowManager {
             target_monitor.focus_workspace(target_workspace_idx)?;
         }
 
-        target_monitor.load_focused_workspace(mouse_follows_focus, true)?;
+        target_monitor.load_focused_workspace(mouse_follows_focus)?;
         target_monitor.update_focused_workspace(offset, &invisible_borders)
     }
 
@@ -1195,7 +1195,7 @@ impl WindowManager {
 
             target_monitor.workspaces_mut().push_back(workspace);
             target_monitor.focus_workspace(target_monitor.workspaces().len() - 1)?;
-            target_monitor.load_focused_workspace(mouse_follows_focus, false)?;
+            target_monitor.load_focused_workspace(mouse_follows_focus)?;
         }
 
         self.focus_monitor(idx)?;
@@ -2250,7 +2250,7 @@ impl WindowManager {
             .ok_or_else(|| anyhow!("there is no workspace"))?;
 
         monitor.focus_workspace(idx)?;
-        monitor.load_focused_workspace(mouse_follows_focus, true)?;
+        monitor.load_focused_workspace(mouse_follows_focus)?;
 
         self.update_focused_workspace(false)
     }
@@ -2282,7 +2282,7 @@ impl WindowManager {
             .ok_or_else(|| anyhow!("there is no workspace"))?;
 
         monitor.focus_workspace(monitor.new_workspace_idx())?;
-        monitor.load_focused_workspace(mouse_follows_focus, false)?;
+        monitor.load_focused_workspace(mouse_follows_focus)?;
 
         self.update_focused_workspace(self.mouse_follows_focus)
     }
