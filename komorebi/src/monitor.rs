@@ -4,7 +4,6 @@ use std::thread::sleep;
 use std::time::Duration;
 
 use color_eyre::eyre::anyhow;
-use color_eyre::eyre::bail;
 use color_eyre::Result;
 use getset::CopyGetters;
 use getset::Getters;
@@ -75,7 +74,7 @@ impl Monitor {
         let focused_idx = self.focused_workspace_idx();
         for (i, workspace) in self.workspaces_mut().iter_mut().enumerate() {
             if i != focused_idx {
-                workspace.hide();
+                workspace.hide(None);
             }
         }
 
@@ -134,44 +133,6 @@ impl Monitor {
 
     pub fn remove_workspaces(&mut self) -> VecDeque<Workspace> {
         self.workspaces_mut().drain(..).collect()
-    }
-
-    #[tracing::instrument(skip(self))]
-    pub fn move_container_to_workspace(
-        &mut self,
-        target_workspace_idx: usize,
-        follow: bool,
-    ) -> Result<()> {
-        let workspace = self
-            .focused_workspace_mut()
-            .ok_or_else(|| anyhow!("there is no workspace"))?;
-
-        if workspace.maximized_window().is_some() {
-            bail!("cannot move native maximized window to another monitor or workspace");
-        }
-
-        let container = workspace
-            .remove_focused_container()
-            .ok_or_else(|| anyhow!("there is no container"))?;
-
-        let workspaces = self.workspaces_mut();
-
-        #[allow(clippy::option_if_let_else)]
-        let target_workspace = match workspaces.get_mut(target_workspace_idx) {
-            None => {
-                workspaces.resize(target_workspace_idx + 1, Workspace::default());
-                workspaces.get_mut(target_workspace_idx).unwrap()
-            }
-            Some(workspace) => workspace,
-        };
-
-        target_workspace.add_container(container);
-
-        if follow {
-            self.focus_workspace(target_workspace_idx)?;
-        }
-
-        Ok(())
     }
 
     #[tracing::instrument(skip(self))]

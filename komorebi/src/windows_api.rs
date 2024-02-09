@@ -80,6 +80,7 @@ use windows::Win32::UI::WindowsAndMessaging::GetWindowRect;
 use windows::Win32::UI::WindowsAndMessaging::GetWindowTextW;
 use windows::Win32::UI::WindowsAndMessaging::GetWindowThreadProcessId;
 use windows::Win32::UI::WindowsAndMessaging::IsIconic;
+use windows::Win32::UI::WindowsAndMessaging::IsZoomed;
 use windows::Win32::UI::WindowsAndMessaging::IsWindow;
 use windows::Win32::UI::WindowsAndMessaging::IsWindowVisible;
 use windows::Win32::UI::WindowsAndMessaging::PostMessageW;
@@ -393,16 +394,6 @@ impl WindowsApi {
         .process()
     }
 
-    fn show_window(hwnd: HWND, command: SHOW_WINDOW_CMD) {
-        // BOOL is returned but does not signify whether or not the operation was succesful
-        // https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-showwindow
-        unsafe { ShowWindow(hwnd, command) };
-    }
-
-    pub fn minimize_window(hwnd: HWND) {
-        Self::show_window(hwnd, SW_MINIMIZE);
-    }
-
     fn post_message(hwnd: HWND, message: u32, wparam: WPARAM, lparam: LPARAM) -> Result<()> {
         unsafe { PostMessageW(hwnd, message, wparam, lparam) }.process()
     }
@@ -414,6 +405,16 @@ impl WindowsApi {
         }
     }
 
+    fn show_window(hwnd: HWND, command: SHOW_WINDOW_CMD) {
+        // BOOL is returned but does not signify whether or not the operation was succesful
+        // https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-showwindow
+        unsafe { ShowWindow(hwnd, command) };
+    }
+
+    pub fn minimize_window(hwnd: HWND) {
+        Self::show_window(hwnd, SW_MINIMIZE);
+    }
+    
     pub fn hide_window(hwnd: HWND) {
         Self::show_window(hwnd, SW_HIDE);
     }
@@ -676,6 +677,11 @@ impl WindowsApi {
     pub fn is_iconic(hwnd: HWND) -> bool {
         unsafe { IsIconic(hwnd) }.into()
     }
+
+    pub fn is_zoomed(hwnd: HWND) -> bool {
+        unsafe { IsZoomed(hwnd) }.into()
+    }
+
 
     pub fn monitor_info_w(hmonitor: HMONITOR) -> Result<MONITORINFOEXW> {
         let mut ex_info = MONITORINFOEXW::default();

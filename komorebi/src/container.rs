@@ -1,9 +1,11 @@
 use std::collections::VecDeque;
 
+use color_eyre::eyre::Result;
 use getset::Getters;
 use nanoid::nanoid;
 use schemars::JsonSchema;
 use serde::Serialize;
+use windows::Win32::Foundation::HWND;
 
 use crate::ring::Ring;
 use crate::window::Window;
@@ -34,21 +36,31 @@ impl PartialEq for Container {
 }
 
 impl Container {
-    pub fn hide(&mut self) {
-        for window in self.windows_mut().iter_mut().rev() {
-            window.hide();
+    pub fn hide(&self, omit: Option<HWND>) {
+        for window in self.windows().iter().rev() {
+            if omit.is_none() || omit.unwrap() != window.hwnd() {
+                window.hide();
+            }
         }
     }
 
-    pub fn load_focused_window(&mut self) {
+    pub fn restore(&self) -> Result<()> {
+        if let Some(window) = self.focused_window() {
+            window.restore()?;
+        }
+        Ok(())
+    }
+
+    pub fn load_focused_window(&mut self) -> Result<()> {
         let focused_idx = self.focused_window_idx();
         for (i, window) in self.windows_mut().iter_mut().enumerate() {
             if i == focused_idx {
-                window.restore();
+                window.restore()?;
             } else {
                 window.hide();
             }
         }
+        Ok(())
     }
 
     pub fn hwnd_from_exe(&self, exe: &str) -> Option<isize> {

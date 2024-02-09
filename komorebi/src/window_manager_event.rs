@@ -22,7 +22,8 @@ pub enum WindowManagerEvent {
     Uncloak(WinEvent, Window),
     MoveResizeStart(WinEvent, Window),
     MoveResizeEnd(WinEvent, Window),
-    MouseCapture(WinEvent, Window),
+    MouseCaptureStart(WinEvent, Window),
+    MouseCaptureEnd(WinEvent, Window),
     Manage(Window),
     Unmanage(Window),
     Raise(Window),
@@ -68,8 +69,11 @@ impl Display for WindowManagerEvent {
             Self::MoveResizeEnd(winevent, window) => {
                 write!(f, "MoveResizeEnd (WinEvent: {winevent}, Window: {window})",)
             }
-            Self::MouseCapture(winevent, window) => {
-                write!(f, "MouseCapture (WinEvent: {winevent}, Window: {window})",)
+            Self::MouseCaptureStart(winevent, window) => {
+                write!(f, "MouseCaptureStart (WinEvent: {winevent}, Window: {window})",)
+            }
+            Self::MouseCaptureEnd(winevent, window) => {
+                write!(f, "MouseCaptureEnd (WinEvent: {winevent}, Window: {window})",)
             }
             Self::Raise(window) => {
                 write!(f, "Raise (Window: {window})")
@@ -93,7 +97,8 @@ impl WindowManagerEvent {
             | Self::Uncloak(_, window)
             | Self::MoveResizeStart(_, window)
             | Self::MoveResizeEnd(_, window)
-            | Self::MouseCapture(_, window)
+            | Self::MouseCaptureStart(_, window)
+            | Self::MouseCaptureEnd(_, window)
             | Self::Raise(window)
             | Self::Manage(window)
             | Self::DisplayChange(window)
@@ -121,9 +126,8 @@ impl WindowManagerEvent {
             }
             WinEvent::SystemMoveSizeStart => Option::from(Self::MoveResizeStart(winevent, window)),
             WinEvent::SystemMoveSizeEnd => Option::from(Self::MoveResizeEnd(winevent, window)),
-            WinEvent::SystemCaptureStart | WinEvent::SystemCaptureEnd => {
-                Option::from(Self::MouseCapture(winevent, window))
-            }
+            WinEvent::SystemCaptureStart => Option::from(Self::MouseCaptureStart(winevent, window)),
+            WinEvent::SystemCaptureEnd =>  Option::from(Self::MouseCaptureEnd(winevent, window)),
             WinEvent::ObjectNameChange => {
                 // Some apps like Firefox don't send ObjectCreate or ObjectShow on launch
                 // This spams the message queue, but I don't know what else to do. On launch

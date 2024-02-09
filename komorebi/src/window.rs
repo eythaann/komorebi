@@ -38,6 +38,7 @@ use crate::ALT_FOCUS_HACK;
 use crate::BORDER_OVERFLOW_IDENTIFIERS;
 use crate::FLOAT_IDENTIFIERS;
 use crate::HIDDEN_HWNDS;
+use crate::MAXIMIZED_HWNDS;
 use crate::HIDING_BEHAVIOUR;
 use crate::LAYERED_WHITELIST;
 use crate::MANAGE_IDENTIFIERS;
@@ -182,6 +183,34 @@ impl Window {
         WindowsApi::position_window(self.hwnd(), &rect, top)
     }
 
+    pub fn is_maximized(self) -> bool {
+        WindowsApi::is_zoomed(self.hwnd())
+    }
+
+    pub fn is_miminized(self) -> bool {
+        WindowsApi::is_iconic(self.hwnd())
+    }
+
+    fn remove_from_hidden_hwnds(self) {
+        let mut programmatically_hidden_hwnds = HIDDEN_HWNDS.lock();
+        if let Some(idx) = programmatically_hidden_hwnds
+            .iter()
+            .position(|&hwnd| hwnd == self.hwnd)
+        {
+            programmatically_hidden_hwnds.remove(idx);
+        }
+    }
+
+    pub fn remove_from_maximized_hwnds(self) {
+        let mut programmatically_maximized_hwnds = MAXIMIZED_HWNDS.lock();
+        if let Some(idx) = programmatically_maximized_hwnds
+            .iter()
+            .position(|&hwnd| hwnd == self.hwnd)
+        {
+            programmatically_maximized_hwnds.remove(idx);
+        }
+    }
+
     pub fn hide(self) {
         let mut programmatically_hidden_hwnds = HIDDEN_HWNDS.lock();
         if !programmatically_hidden_hwnds.contains(&self.hwnd) {
@@ -196,28 +225,25 @@ impl Window {
         }
     }
 
-    pub fn restore(self) {
-        let mut programmatically_hidden_hwnds = HIDDEN_HWNDS.lock();
-        if let Some(idx) = programmatically_hidden_hwnds
-            .iter()
-            .position(|&hwnd| hwnd == self.hwnd)
-        {
-            programmatically_hidden_hwnds.remove(idx);
-        }
-
+    pub fn restore(self) -> Result<()> {
+        self.remove_from_hidden_hwnds();
         let hiding_behaviour = HIDING_BEHAVIOUR.lock();
         match *hiding_behaviour {
             HidingBehaviour::Hide => WindowsApi::restore_window(self.hwnd()),
             HidingBehaviour::Minimize => {
+                let wait = self.is_miminized();
                 WindowsApi::restore_window(self.hwnd());
-                sleep(Duration::from_millis(35));
+                if wait {
+                    sleep(Duration::from_millis(35));
+                }
             }
             HidingBehaviour::Cloak => SetCloak(self.hwnd(), 1, 0),
-        }
+        };
+        Ok(())
     }
 
     pub fn minimize(self) {
-        if WindowsApi::is_iconic(self.hwnd()) {
+        if self.is_miminized() {
             return;
         }
         WindowsApi::minimize_window(self.hwnd());
@@ -228,28 +254,25 @@ impl Window {
         WindowsApi::close_window(self.hwnd())
     }
 
-    pub fn maximize(self) {
-        let mut programmatically_hidden_hwnds = HIDDEN_HWNDS.lock();
-        if let Some(idx) = programmatically_hidden_hwnds
-            .iter()
-            .position(|&hwnd| hwnd == self.hwnd)
-        {
-            programmatically_hidden_hwnds.remove(idx);
-        }
+    pub fn is_programmatically_maximized(self) -> bool {
+        let programmatically_maximized_hwnds = MAXIMIZED_HWNDS.lock();
+        programmatically_maximized_hwnds.contains(&self.hwnd)
+    }
 
+    pub fn maximize(self) {
+        let mut programmatically_maximized_hwnds = MAXIMIZED_HWNDS.lock();
+        if !programmatically_maximized_hwnds.contains(&self.hwnd) {
+            programmatically_maximized_hwnds.push(self.hwnd);
+        }
+        self.remove_from_hidden_hwnds();
         WindowsApi::maximize_window(self.hwnd());
     }
 
     pub fn unmaximize(self) {
-        let mut programmatically_hidden_hwnds = HIDDEN_HWNDS.lock();
-        if let Some(idx) = programmatically_hidden_hwnds
-            .iter()
-            .position(|&hwnd| hwnd == self.hwnd)
-        {
-            programmatically_hidden_hwnds.remove(idx);
-        }
-
+        self.remove_from_maximized_hwnds();
+        self.remove_from_hidden_hwnds();
         WindowsApi::unmaximize_window(self.hwnd());
+        sleep(Duration::from_millis(35));
     }
 
     pub fn raise(self) {

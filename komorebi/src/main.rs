@@ -87,6 +87,7 @@ type WorkspaceRule = (usize, usize, bool);
 
 lazy_static! {
     static ref HIDDEN_HWNDS: Arc<Mutex<Vec<isize>>> = Arc::new(Mutex::new(vec![]));
+    static ref MAXIMIZED_HWNDS: Arc<Mutex<Vec<isize>>> = Arc::new(Mutex::new(vec![]));
     static ref LAYERED_WHITELIST: Arc<Mutex<Vec<IdWithIdentifier>>> = Arc::new(Mutex::new(vec![
         IdWithIdentifier {
             kind: ApplicationIdentifier::Exe,

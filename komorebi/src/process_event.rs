@@ -137,24 +137,14 @@ impl WindowManager {
 
         self.enforce_workspace_rules()?;
 
-        if matches!(event, WindowManagerEvent::MouseCapture(..)) {
-            tracing::trace!(
-                "only reaping orphans and enforcing workspace rules for mouse capture event"
-            );
-            return Ok(());
-        }
-
         match event {
             WindowManagerEvent::Raise(window) => {
                 window.raise();
                 self.has_pending_raise_op = false;
             }
             WindowManagerEvent::Destroy(_, window) | WindowManagerEvent::Unmanage(window) => {
-                self.focused_workspace_mut()?.remove_window(window.hwnd)?;
-                self.update_focused_workspace(false)?;
-
+                self.remove_window(window)?;
                 let mut already_moved_window_handles = self.already_moved_window_handles.lock();
-
                 already_moved_window_handles.remove(&window.hwnd);
             }
             WindowManagerEvent::Minimize(_, window) => {
@@ -168,9 +158,30 @@ impl WindowManager {
                 }
 
                 if hide {
-                    self.focused_workspace_mut()?.remove_window(window.hwnd)?;
-                    self.update_focused_workspace(false)?;
+                    self.remove_window(window)?;
                 }
+            }
+            WindowManagerEvent::MouseCaptureStart(_, _) => {
+                tracing::trace!(
+                    "only reaping orphans and enforcing workspace rules for mouse capture event"
+                );
+                return Ok(());
+            }
+            WindowManagerEvent::MouseCaptureEnd(_, window) => {
+                let is_programmatically_maximized = window.is_programmatically_maximized();
+                let currently_is_maximized = window.is_maximized();
+
+                if currently_is_maximized != is_programmatically_maximized {
+                    let mouse_follows_focus = self.mouse_follows_focus;
+                    let workspace = self.focused_workspace_mut()?;
+                    if currently_is_maximized {
+                        workspace.maximize_focused_window()?;
+                    } else if !window.is_miminized() {
+                        workspace.unmaximize_focused_window(mouse_follows_focus)?;
+                        self.update_focused_workspace(false)?;
+                    }
+                }
+                return Ok(());
             }
             WindowManagerEvent::Hide(_, window) => {
                 let mut hide = false;
@@ -207,12 +218,9 @@ impl WindowManager {
                 }
 
                 if hide {
-                    self.focused_workspace_mut()?.remove_window(window.hwnd)?;
-                    self.update_focused_workspace(false)?;
+                    self.remove_window(window)?;
                 }
-
                 let mut already_moved_window_handles = self.already_moved_window_handles.lock();
-
                 already_moved_window_handles.remove(&window.hwnd);
             }
             WindowManagerEvent::FocusChange(_, window) => {
@@ -222,12 +230,6 @@ impl WindowManager {
                     .iter()
                     .any(|w| w.hwnd == window.hwnd)
                 {
-                    if let Some(w) = workspace.maximized_window() {
-                        if w.hwnd == window.hwnd {
-                            return Ok(());
-                        }
-                    }
-
                     if let Some(monocle) = workspace.monocle_container() {
                         if let Some(window) = monocle.focused_window() {
                             window.focus(false)?;
@@ -289,9 +291,16 @@ impl WindowManager {
                 let workspace = self.focused_workspace_mut()?;
 
                 if !workspace.contains_window(window.hwnd) {
+                    if window.is_maximized() {
+                        window.unmaximize(); // start all new windows as unmaximized windows
+                    }
+
                     match behaviour {
                         WindowContainerBehaviour::Create => {
-                            if window.should_float() {
+                            // If workspace have a maximized windows all new opened windows should start as floating
+                            if window.should_float()
+                                || workspace.get_window_to_be_maximized().is_some()
+                            {
                                 workspace.floating_windows_mut().push(*window);
                                 window.center(&work_area, &invisible_borders)?;
                                 window.focus(self.mouse_follows_focus)?;
@@ -521,7 +530,6 @@ impl WindowManager {
                 }
             }
             WindowManagerEvent::DisplayChange(..)
-            | WindowManagerEvent::MouseCapture(..)
             | WindowManagerEvent::Cloak(..)
             | WindowManagerEvent::Uncloak(..) => {}
         };

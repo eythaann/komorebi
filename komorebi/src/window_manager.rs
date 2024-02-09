@@ -857,9 +857,7 @@ impl WindowManager {
             .update_focused_workspace(offset, &invisible_borders)?;
 
         if follow_focus {
-            if let Some(window) = self.focused_workspace()?.maximized_window() {
-                window.focus(self.mouse_follows_focus)?;
-            } else if let Some(container) = self.focused_workspace()?.monocle_container() {
+            if let Some(container) = self.focused_workspace()?.monocle_container() {
                 if let Some(window) = container.focused_window() {
                     window.focus(self.mouse_follows_focus)?;
                 }
@@ -993,12 +991,12 @@ impl WindowManager {
                             window.add_title_bar()?;
                         }
 
-                        window.restore();
+                        window.restore()?;
                     }
                 }
 
                 for window in workspace.floating_windows() {
-                    window.restore();
+                    window.restore()?;
                 }
             }
         }
@@ -1109,10 +1107,10 @@ impl WindowManager {
     }
 
     #[tracing::instrument(skip(self))]
-    pub fn move_container_to_monitor(
+    pub fn move_focused_container(
         &mut self,
-        monitor_idx: usize,
-        workspace_idx: Option<usize>,
+        target_monitor_idx: usize,
+        target_workspace_idx: Option<usize>,
         follow: bool,
     ) -> Result<()> {
         self.handle_unmanaged_window_behaviour()?;
@@ -1122,55 +1120,57 @@ impl WindowManager {
         let invisible_borders = self.invisible_borders;
         let offset = self.work_area_offset;
         let mouse_follows_focus = self.mouse_follows_focus;
+        let is_moving_to_other_monitor = self.focused_monitor_idx() != target_monitor_idx;
 
-        let monitor = self
+        let focused_monitor = self
             .focused_monitor_mut()
             .ok_or_else(|| anyhow!("there is no monitor"))?;
-        let workspace = monitor
+
+        let focused_workspace = focused_monitor
             .focused_workspace_mut()
             .ok_or_else(|| anyhow!("there is no workspace"))?;
 
-        if workspace.maximized_window().is_some() {
-            bail!("cannot move native maximized window to another monitor or workspace");
+        let focused_floating_window = focused_workspace.remove_focused_floating_window();
+        let focused_container = match focused_floating_window {
+            None => focused_workspace.remove_focused_container(),
+            Some(_) => None
+        };
+
+        let mut target_monitor = focused_monitor;
+        if is_moving_to_other_monitor {
+            target_monitor.load_focused_workspace(mouse_follows_focus, true)?;
+            target_monitor.update_focused_workspace(offset, &invisible_borders)?;
+            target_monitor = self
+                .monitors_mut()
+                .get_mut(target_monitor_idx)
+                .ok_or_else(|| anyhow!("there is no monitor"))?;
         }
 
-        let container = workspace
-            .remove_focused_container()
-            .ok_or_else(|| anyhow!("there is no container"))?;
+        let target_workspace_idx =
+            target_workspace_idx.unwrap_or_else(|| target_monitor.focused_workspace_idx());
+        let workspaces = target_monitor.workspaces_mut();
+        let target_workspace = match workspaces.get_mut(target_workspace_idx) {
+            None => {
+                workspaces.resize(target_workspace_idx + 1, Workspace::default());
+                workspaces.get_mut(target_workspace_idx).unwrap()
+            }
+            Some(workspace) => workspace,
+        };
 
-        monitor.update_focused_workspace(offset, &invisible_borders)?;
-
-        let target_monitor = self
-            .monitors_mut()
-            .get_mut(monitor_idx)
-            .ok_or_else(|| anyhow!("there is no monitor"))?;
-
-        target_monitor.add_container(container, workspace_idx)?;
-        target_monitor.load_focused_workspace(mouse_follows_focus, false)?;
-        target_monitor.update_focused_workspace(offset, &invisible_borders)?;
+        if let Some(window) = focused_floating_window {
+            target_workspace.floating_windows_mut().push(window);
+        } else if let Some(container) = focused_container {
+            target_workspace.add_container(container);
+        } else {
+            return Err(anyhow!("there is no focused container or window"));
+        }
 
         if follow {
-            self.focus_monitor(monitor_idx)?;
+            target_monitor.focus_workspace(target_workspace_idx)?;
         }
 
-        self.update_focused_workspace(self.mouse_follows_focus)
-    }
-
-    #[tracing::instrument(skip(self))]
-    pub fn move_container_to_workspace(&mut self, idx: usize, follow: bool) -> Result<()> {
-        self.handle_unmanaged_window_behaviour()?;
-
-        tracing::info!("moving container");
-
-        let mouse_follows_focus = self.mouse_follows_focus;
-        let monitor = self
-            .focused_monitor_mut()
-            .ok_or_else(|| anyhow!("there is no monitor"))?;
-
-        monitor.move_container_to_workspace(idx, follow)?;
-        monitor.load_focused_workspace(mouse_follows_focus, false)?;
-
-        self.update_focused_workspace(mouse_follows_focus)
+        target_monitor.load_focused_workspace(mouse_follows_focus, true)?;
+        target_monitor.update_focused_workspace(offset, &invisible_borders)
     }
 
     pub fn remove_focused_workspace(&mut self) -> Option<Workspace> {
@@ -1365,13 +1365,7 @@ impl WindowManager {
         self.handle_unmanaged_window_behaviour()?;
 
         tracing::info!("focusing container");
-        let mut maximize_next = false;
         let mut monocle_next = false;
-
-        if self.focused_workspace_mut()?.maximized_window().is_some() {
-            maximize_next = true;
-            self.unmaximize_window()?;
-        }
 
         if self.focused_workspace_mut()?.monocle_container().is_some() {
             monocle_next = true;
@@ -1386,9 +1380,7 @@ impl WindowManager {
 
         workspace.focus_container(new_idx);
 
-        if maximize_next {
-            self.toggle_maximize()?;
-        } else if monocle_next {
+        if monocle_next {
             self.toggle_monocle()?;
         } else {
             self.focused_window_mut()?.focus(self.mouse_follows_focus)?;
@@ -1437,7 +1429,7 @@ impl WindowManager {
         let next_idx = direction.next_idx(current_idx, len);
 
         container.focus_window(next_idx);
-        container.load_focused_window();
+        container.load_focused_window()?;
 
         self.update_focused_workspace(self.mouse_follows_focus)
     }
@@ -1509,6 +1501,21 @@ impl WindowManager {
     }
 
     #[tracing::instrument(skip(self))]
+    pub fn remove_window(&mut self, window: &Window) -> Result<()> {
+        self.handle_unmanaged_window_behaviour()?;
+        tracing::info!("removing window");
+
+        let mouse_follows_focus = self.mouse_follows_focus;
+        let workspace = self.focused_workspace_mut()?;
+        workspace.remove_window(window.hwnd)?;
+        if window.is_programmatically_maximized() {
+            window.remove_from_maximized_hwnds();
+            workspace.restore(mouse_follows_focus)?;
+        }
+        self.update_focused_workspace(mouse_follows_focus)
+    }
+
+    #[tracing::instrument(skip(self))]
     pub fn remove_window_from_container(&mut self) -> Result<()> {
         self.handle_unmanaged_window_behaviour()?;
 
@@ -1559,18 +1566,19 @@ impl WindowManager {
 
         let work_area = self.focused_monitor_work_area()?;
         let invisible_borders = self.invisible_borders;
+        let mouse_follows_focus = self.mouse_follows_focus;
 
         let workspace = self.focused_workspace_mut()?;
         workspace.float_focused_window()?;
-
+        workspace.unmaximize_focused_window(mouse_follows_focus)?;
+        
         let window = workspace
             .floating_windows_mut()
             .last_mut()
             .ok_or_else(|| anyhow!("there is no floating window"))?;
 
         window.center(&work_area, &invisible_borders)?;
-        window.focus(self.mouse_follows_focus)?;
-
+        window.focus(mouse_follows_focus)?;
         Ok(())
     }
 
@@ -1579,7 +1587,7 @@ impl WindowManager {
         tracing::info!("unfloating window");
 
         let workspace = self.focused_workspace_mut()?;
-        workspace.new_container_for_floating_window()
+        workspace.unfloat_focused_window()
     }
 
     #[tracing::instrument(skip(self))]
@@ -1615,31 +1623,10 @@ impl WindowManager {
     #[tracing::instrument(skip(self))]
     pub fn toggle_maximize(&mut self) -> Result<()> {
         self.handle_unmanaged_window_behaviour()?;
-
+        let mouse_follows_focus = self.mouse_follows_focus;
         let workspace = self.focused_workspace_mut()?;
-
-        match workspace.maximized_window() {
-            None => self.maximize_window()?,
-            Some(_) => self.unmaximize_window()?,
-        }
-
-        self.update_focused_workspace(true)
-    }
-
-    #[tracing::instrument(skip(self))]
-    pub fn maximize_window(&mut self) -> Result<()> {
-        tracing::info!("maximizing windowj");
-
-        let workspace = self.focused_workspace_mut()?;
-        workspace.new_maximized_window()
-    }
-
-    #[tracing::instrument(skip(self))]
-    pub fn unmaximize_window(&mut self) -> Result<()> {
-        tracing::info!("unmaximizing window");
-
-        let workspace = self.focused_workspace_mut()?;
-        workspace.reintegrate_maximized_window()
+        workspace.toggle_maximize_focused_window(mouse_follows_focus)?;
+        self.update_focused_workspace(false)
     }
 
     #[tracing::instrument(skip(self))]
