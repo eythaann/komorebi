@@ -1,3 +1,6 @@
+mod data_types;
+mod flags;
+
 use std::collections::VecDeque;
 use std::convert::TryFrom;
 use std::ffi::c_void;
@@ -80,9 +83,9 @@ use windows::Win32::UI::WindowsAndMessaging::GetWindowRect;
 use windows::Win32::UI::WindowsAndMessaging::GetWindowTextW;
 use windows::Win32::UI::WindowsAndMessaging::GetWindowThreadProcessId;
 use windows::Win32::UI::WindowsAndMessaging::IsIconic;
-use windows::Win32::UI::WindowsAndMessaging::IsZoomed;
 use windows::Win32::UI::WindowsAndMessaging::IsWindow;
 use windows::Win32::UI::WindowsAndMessaging::IsWindowVisible;
+use windows::Win32::UI::WindowsAndMessaging::IsZoomed;
 use windows::Win32::UI::WindowsAndMessaging::PostMessageW;
 use windows::Win32::UI::WindowsAndMessaging::RealGetWindowClassW;
 use windows::Win32::UI::WindowsAndMessaging::RegisterClassW;
@@ -137,10 +140,11 @@ use crate::container::Container;
 use crate::monitor;
 use crate::monitor::Monitor;
 use crate::ring::Ring;
-use crate::set_window_position::SetWindowPosition;
 use crate::windows_callbacks;
 use crate::BORDER_HWND;
 use crate::TRANSPARENCY_COLOUR;
+
+use self::flags::SetWindowPosition;
 
 pub enum WindowsResult<T, E> {
     Err(E),
@@ -209,7 +213,6 @@ impl<T> ProcessWindowsCrateResult<T> for WindowsCrateResult<T> {
 }
 
 pub struct WindowsApi;
-
 impl WindowsApi {
     pub fn enum_display_monitors(
         callback: MONITORENUMPROC,
@@ -405,7 +408,7 @@ impl WindowsApi {
         }
     }
 
-    fn show_window(hwnd: HWND, command: SHOW_WINDOW_CMD) {
+    pub fn show_window(hwnd: HWND, command: SHOW_WINDOW_CMD) {
         // BOOL is returned but does not signify whether or not the operation was succesful
         // https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-showwindow
         unsafe { ShowWindow(hwnd, command) };
@@ -414,7 +417,7 @@ impl WindowsApi {
     pub fn minimize_window(hwnd: HWND) {
         Self::show_window(hwnd, SW_MINIMIZE);
     }
-    
+
     pub fn hide_window(hwnd: HWND) {
         Self::show_window(hwnd, SW_HIDE);
     }
@@ -681,7 +684,6 @@ impl WindowsApi {
     pub fn is_zoomed(hwnd: HWND) -> bool {
         unsafe { IsZoomed(hwnd) }.into()
     }
-
 
     pub fn monitor_info_w(hmonitor: HMONITOR) -> Result<MONITORINFOEXW> {
         let mut ex_info = MONITORINFOEXW::default();

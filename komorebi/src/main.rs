@@ -63,6 +63,7 @@ use crate::windows_api::WindowsApi;
 
 #[macro_use]
 mod ring;
+mod utils;
 
 mod border;
 mod com;
@@ -72,7 +73,6 @@ mod monitor;
 mod process_command;
 mod process_event;
 mod process_movement;
-mod set_window_position;
 mod static_config;
 mod styles;
 mod window;
@@ -162,6 +162,11 @@ lazy_static! {
             kind: ApplicationIdentifier::Class,
             id: String::from("IHWindowClass"),
             matching_strategy: Option::from(MatchingStrategy::Equals),
+        },
+        IdWithIdentifier {
+            kind: ApplicationIdentifier::Exe,
+            id: String::from("komorebi.exe"),
+            matching_strategy: Option::from(MatchingStrategy::Equals),
         }
     ]));
     static ref FLOAT_IDENTIFIERS: Arc<Mutex<Vec<IdWithIdentifier>>> = Arc::new(Mutex::new(vec![]));
@@ -221,6 +226,10 @@ lazy_static! {
     // Use app-specific titlebar removal options where possible
     // eg. Windows Terminal, IntelliJ IDEA, Firefox
     static ref NO_TITLEBAR: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
+
+    // lazy top bar statics
+    static ref TAB_TEXT_COLOR: Arc<Mutex<String>> = Arc::new(Mutex::new("#FFFFFF".to_string()));
+    static ref TAB_BACKGROUND: Arc<Mutex<String>> = Arc::new(Mutex::new("#333333".to_string()));
 }
 
 pub static INITIAL_CONFIGURATION_LOADED: AtomicBool = AtomicBool::new(false);
@@ -230,6 +239,10 @@ pub static ALT_FOCUS_HACK: AtomicBool = AtomicBool::new(false);
 
 pub static DEFAULT_WORKSPACE_PADDING: AtomicI32 = AtomicI32::new(10);
 pub static DEFAULT_CONTAINER_PADDING: AtomicI32 = AtomicI32::new(10);
+
+// top bar statics
+pub static TAB_HEIGH: AtomicI32 = AtomicI32::new(40);
+pub static TAB_WIDTH: AtomicI32 = AtomicI32::new(200);
 
 // animations statics
 pub static NATIVE_ANIMATION_DELAY: AtomicU64 = AtomicU64::new(35);

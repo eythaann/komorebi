@@ -31,6 +31,7 @@ use crate::DEFAULT_WORKSPACE_PADDING;
 use crate::INITIAL_CONFIGURATION_LOADED;
 use crate::NO_TITLEBAR;
 use crate::REMOVE_TITLEBARS;
+use crate::TAB_HEIGH;
 
 #[derive(Debug, Clone, Serialize, Getters, CopyGetters, MutGetters, Setters, JsonSchema)]
 pub struct Workspace {
@@ -132,7 +133,7 @@ impl Workspace {
         Ok(())
     }
 
-    pub fn hide(&mut self, omit: Option<HWND>) {
+    pub fn hide(&mut self, omit: Option<HWND>) -> Result<()> {
         for window in self.floating_windows_mut().iter_mut().rev() {
             if omit.is_none() || omit.unwrap() != window.hwnd() {
                 window.hide();
@@ -140,12 +141,13 @@ impl Workspace {
         }
 
         for container in self.containers_mut().iter_mut().rev() {
-            container.hide(omit);
+            container.hide(omit)?;
         }
 
         if let Some(container) = self.monocle_container_mut() {
-            container.hide(omit);
+            container.hide(omit)?;
         }
+        Ok(())
     }
 
     pub fn get_window_to_be_maximized(&self) -> Option<&Window> {
@@ -276,9 +278,9 @@ impl Workspace {
                 let should_remove_titlebars = REMOVE_TITLEBARS.load(Ordering::SeqCst);
                 let no_titlebar = NO_TITLEBAR.lock().clone();
 
-                let windows = self.visible_windows_mut();
-                for (i, window) in windows.into_iter().enumerate() {
-                    if let (Some(window), Some(layout)) = (window, layouts.get(i)) {
+                let containers = self.containers();
+                for (i, container) in containers.into_iter().enumerate() {
+                    if let (Some(window), Some(layout)) = (container.focused_window(), layouts.get(i)) {
                         if should_remove_titlebars && no_titlebar.contains(&window.exe()?) {
                             window.remove_title_bar()?;
                         } else if no_titlebar.contains(&window.exe()?) {
@@ -286,7 +288,15 @@ impl Workspace {
                         }
 
                         if !window.is_maximized() {
-                            window.set_position(layout, invisible_borders, false)?;
+                            let mut window_layout = layout.clone();
+                            if let Some(top_bar) = container.top_bar() {
+                                top_bar.set_position(&top_bar.get_position_from_container_layout(layout), false)?;
+                                top_bar.update(container.windows())?;
+                                let height = TAB_HEIGH.load(Ordering::SeqCst);
+                                window_layout.top += height + self.container_padding().or(Some(0)).unwrap();
+                                window_layout.bottom -= height;
+                            }
+                            window.set_position(&window_layout, invisible_borders, false)?;
                         }
                     }
                 }
@@ -331,17 +341,18 @@ impl Workspace {
                 .retain(|w| !floating_hwnds.contains(&w.hwnd));
         }
 
-        let mut container_ids = vec![];
+        let mut container_to_delete = vec![];
         for container in self.containers() {
             if container.windows().is_empty() {
-                container_ids.push(container.id().clone());
+                container_to_delete.push(container.id().clone());
+                container.destroy()?;
             }
         }
 
         self.containers_mut()
-            .retain(|c| !container_ids.contains(c.id()));
+            .retain(|c| !container_to_delete.contains(c.id()));
 
-        Ok((hwnds.len() + floating_hwnds.len(), container_ids.len()))
+        Ok((hwnds.len() + floating_hwnds.len(), container_to_delete.len()))
     }
 
     pub fn container_for_window(&self, hwnd: isize) -> Option<&Container> {
@@ -586,7 +597,6 @@ impl Workspace {
     pub fn remove_container(&mut self, idx: usize) -> Option<Container> {
         let container = self.remove_container_by_idx(idx);
         self.focus_previous_container();
-
         container
     }
 
@@ -782,7 +792,7 @@ impl Workspace {
             .focused_window()
             .ok_or_else(|| anyhow!("there is no window"))?;
         focused_window.maximize();
-        self.hide(Some(focused_window.hwnd()));
+        self.hide(Some(focused_window.hwnd()))?;
         Ok(())
     }
 

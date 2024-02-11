@@ -151,7 +151,7 @@ impl Window {
     }
 
     pub fn set_position(
-        &mut self,
+        &self,
         layout: &Rect,
         invisible_borders: &Rect,
         top: bool,

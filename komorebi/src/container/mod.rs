@@ -1,10 +1,12 @@
+mod topbar;
+
 use std::collections::VecDeque;
 use std::sync::atomic::Ordering;
 use std::thread::sleep;
 use std::time::Duration;
 
 use color_eyre::eyre::Result;
-use getset::Getters;
+use getset::{Getters, MutGetters};
 use komorebi_core::HidingBehaviour;
 use nanoid::nanoid;
 use schemars::JsonSchema;
@@ -15,23 +17,30 @@ use crate::ring::Ring;
 use crate::window::Window;
 use crate::{FINISH_MINIMIZE_ANIMATION, HIDING_BEHAVIOUR};
 
-#[derive(Debug, Clone, Serialize, Getters, JsonSchema)]
+use self::topbar::TopBar;
+
+#[derive(Debug, Clone, Serialize, Getters, MutGetters, JsonSchema)]
 pub struct Container {
     #[serde(skip_serializing)]
     #[getset(get = "pub")]
     id: String,
     windows: Ring<Window>,
     wait_for_minimization: bool,
+    #[serde(skip_serializing)]
+    #[getset(get = "pub", get_mut = "pub")]
+    top_bar: Option<TopBar>,
 }
 
 impl_ring_elements!(Container, Window);
 
 impl Default for Container {
     fn default() -> Self {
+        let id = nanoid!();
         Self {
-            id: nanoid!(),
+            id: id.clone(),
             windows: Ring::default(),
             wait_for_minimization: FINISH_MINIMIZE_ANIMATION.load(Ordering::SeqCst),
+            top_bar: TopBar::create(id.as_str()).ok(),
         }
     }
 }
@@ -43,15 +52,31 @@ impl PartialEq for Container {
 }
 
 impl Container {
-    pub fn hide(&self, omit: Option<HWND>) {
+    pub fn destroy(&self) -> Result<()> {
+        if let Some(top_bar) = self.top_bar() {
+            top_bar.destroy()?;
+        }
+        Ok(())
+    }
+
+    pub fn hide(&self, omit: Option<HWND>) -> Result<()> {
+        if let Some(top_bar) = self.top_bar() {
+            top_bar.hide()?;
+        }
+
         for window in self.windows().iter().rev() {
             if omit.is_none() || omit.unwrap() != window.hwnd() {
                 window.hide();
             }
         }
+        Ok(())
     }
 
     pub fn restore(&self) -> Result<()> {
+        if let Some(top_bar) = self.top_bar() {
+            top_bar.restore()?;
+        }
+
         if let Some(window) = self.focused_window() {
             window.restore()?;
         }
