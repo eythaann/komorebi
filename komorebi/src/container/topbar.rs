@@ -1,47 +1,121 @@
-use std::{collections::VecDeque, time::Duration};
+use std::{
+    collections::{HashMap, VecDeque},
+    time::Duration,
+};
 
 use color_eyre::eyre::Result;
 use crossbeam_utils::atomic::AtomicConsume;
+use lazy_static::lazy_static;
+use parking_lot::Mutex;
 use schemars::JsonSchema;
 use windows::Win32::{
-    Foundation::{COLORREF, HWND, LPARAM, LRESULT, RECT, WPARAM},
+    Foundation::{COLORREF, HWND, LPARAM, LRESULT, WPARAM},
     Graphics::Gdi::{
-        CreatePen, CreateSolidBrush, DrawTextW, GetDC, ReleaseDC, RoundRect, SelectObject,
-        SetBkColor, SetTextColor, DT_CENTER, DT_END_ELLIPSIS, DT_SINGLELINE, DT_VCENTER, PS_SOLID,
+        CreatePen, CreateSolidBrush, DrawTextW, GetDC, ReleaseDC, SelectObject, SetBkColor,
+        SetTextColor, DT_CENTER, DT_END_ELLIPSIS, DT_SINGLELINE, DT_VCENTER, PS_SOLID,
     },
     UI::WindowsAndMessaging::{
-        CreateWindowExW, DefWindowProcW, DispatchMessageW, GetMessageW,
-        PostQuitMessage, RegisterClassW, SetLayeredWindowAttributes, TranslateMessage, CS_HREDRAW,
-        CS_VREDRAW, LWA_COLORKEY, MSG, SW_SHOW, WM_DESTROY, WNDCLASSW, WS_EX_LAYERED,
-        WS_EX_TOOLWINDOW, WS_POPUP,
+        CreateWindowExW, DefWindowProcW, DispatchMessageW, GetMessageW, PostQuitMessage,
+        RegisterClassW, SetLayeredWindowAttributes, TranslateMessage, CS_HREDRAW, CS_VREDRAW,
+        LWA_COLORKEY, MSG, SW_SHOW, WM_DESTROY, WM_LBUTTONDOWN, WNDCLASSW, WS_EX_LAYERED,
+        WS_EX_TOOLWINDOW, WS_POPUP, WS_VISIBLE,
     },
 };
 
 use komorebi_core::Rect;
 
 use crate::{
-    utils::str_to_color, window::Window, windows_api::WindowsApi, DEFAULT_CONTAINER_PADDING,
-    TAB_BACKGROUND, TAB_HEIGH, TAB_TEXT_COLOR, TAB_WIDTH, TRANSPARENCY_COLOUR,
+    utils::str_to_color, window::Window, window_manager_event::WindowManagerEvent,
+    windows_api::WindowsApi, winevent::WinEvent, winevent_listener::WINEVENT_CALLBACK_CHANNEL,
+    DEFAULT_CONTAINER_PADDING, TAB_BACKGROUND, TAB_HEIGH, TAB_TEXT_COLOR, TAB_WIDTH,
+    TRANSPARENCY_COLOUR,
 };
 
-#[derive(Debug, Clone, JsonSchema)]
+#[derive(Debug, JsonSchema)]
 pub struct TopBar {
     pub(crate) hwnd: isize,
+    pub is_cloned: bool,
 }
 
-impl From<isize> for TopBar {
-    fn from(hwnd: isize) -> Self {
-        Self { hwnd }
+impl Default for TopBar {
+    fn default() -> Self {
+        Self {
+            hwnd: 0,
+            is_cloned: false,
+        }
     }
+}
+
+impl Clone for TopBar {
+    fn clone(&self) -> Self {
+        Self {
+            hwnd: self.hwnd,
+            is_cloned: true,
+        }
+    }
+}
+
+impl Drop for TopBar {
+    fn drop(&mut self) {
+        if !self.is_cloned {
+            let _ = WindowsApi::close_window(self.hwnd());
+        }
+    }
+}
+
+lazy_static! {
+    static ref WINDOWS_BY_BAR_HWNDS: Mutex<HashMap<isize, VecDeque<isize>>> =
+        Mutex::new(HashMap::new());
 }
 
 impl TopBar {
-    pub const fn hwnd(&self) -> HWND {
-        HWND(self.hwnd)
+    unsafe extern "system" fn window_proc(
+        hwnd: HWND,
+        msg: u32,
+        w_param: WPARAM,
+        l_param: LPARAM,
+    ) -> LRESULT {
+        match msg {
+            WM_LBUTTONDOWN => {
+                let win_hwnds_by_topbar = WINDOWS_BY_BAR_HWNDS.lock();
+                if let Some(win_hwnds) = win_hwnds_by_topbar.get(&hwnd.0) {
+                    let x = l_param.0 as i32 & 0xFFFF;
+                    let y = (l_param.0 as i32 >> 16) & 0xFFFF;
+
+                    let width = TAB_WIDTH.load_consume();
+                    let height = TAB_HEIGH.load_consume();
+                    let gap = DEFAULT_CONTAINER_PADDING.load_consume();
+
+                    for (index, win_hwnd) in win_hwnds.iter().enumerate() {
+                        let left = gap + (index as i32 * (width + gap));
+                        let right = left + width;
+                        let top = 0;
+                        let bottom = height;
+
+                        if x >= left && x <= right && y >= top && y <= bottom {
+                            let window = Window { hwnd: *win_hwnd };
+                            let event_sender = WINEVENT_CALLBACK_CHANNEL.lock();
+                            let _ = event_sender.0.send(WindowManagerEvent::FocusChange(
+                                WinEvent::ObjectFocus,
+                                window,
+                            ));
+                            let _ = event_sender.0.send(WindowManagerEvent::ForceUpdate(window));
+                        }
+                    }
+                }
+                WINDOWS_BY_BAR_HWNDS.force_unlock();
+                LRESULT(0)
+            }
+            WM_DESTROY => {
+                PostQuitMessage(0);
+                LRESULT(0)
+            }
+            _ => return DefWindowProcW(hwnd, msg, w_param, l_param),
+        }
     }
 
-    pub fn create(id: &str) -> Result<TopBar> {
-        let name = WindowsApi::pcwstr(&format!("Top Bar Komorebi {id}\0"));
+    pub fn create() -> Result<TopBar> {
+        let name = WindowsApi::pcwstr("Top Bar Komorebi\0");
         let class = WindowsApi::pcwstr("Top_Bar_Komorebi\0");
 
         let h_module = WindowsApi::module_handle_w()?;
@@ -69,7 +143,7 @@ impl TopBar {
                     WS_EX_TOOLWINDOW | WS_EX_LAYERED,
                     class.get(),
                     name.get(),
-                    WS_POPUP,
+                    WS_POPUP | WS_VISIBLE,
                     0,
                     0,
                     0,
@@ -94,22 +168,14 @@ impl TopBar {
             Ok(())
         });
 
-        Ok(TopBar::from(hwnd_receiver.recv()?.0))
+        Ok(Self {
+            hwnd: hwnd_receiver.recv()?.0,
+            ..Default::default()
+        })
     }
 
-    unsafe extern "system" fn window_proc(
-        hwnd: HWND,
-        msg: u32,
-        w_param: WPARAM,
-        l_param: LPARAM,
-    ) -> LRESULT {
-        match msg {
-            WM_DESTROY => {
-                PostQuitMessage(0);
-                LRESULT(0)
-            }
-            _ => return DefWindowProcW(hwnd, msg, w_param, l_param),
-        }
+    pub const fn hwnd(&self) -> HWND {
+        HWND(self.hwnd)
     }
 
     pub fn set_position(&self, layout: &Rect, top: bool) -> Result<()> {
@@ -118,7 +184,7 @@ impl TopBar {
 
     pub fn get_position_from_container_layout(&self, layout: &Rect) -> Rect {
         Rect {
-            bottom: layout.top + TAB_HEIGH.load_consume(),
+            bottom: TAB_HEIGH.load_consume(),
             ..layout.clone()
         }
     }
@@ -143,37 +209,38 @@ impl TopBar {
 
             for (i, window) in windows.iter().enumerate() {
                 let left = gap + (i as i32 * (width + gap));
-                let top = 0;
+                let mut tab_box = Rect {
+                    top: 0,
+                    left,
+                    right: left + width,
+                    bottom: height,
+                };
 
-                let right = left + width;
-                let bottom = height;
-
-                RoundRect(hdc, left, 0, right, bottom, 12, 12);
+                WindowsApi::round_rect(hdc, &tab_box, 8);
 
                 let mut window_title = window.title()?.encode_utf16().collect::<Vec<u16>>();
 
-                let mut text_rect = RECT {
-                    left: left + 5,
-                    top,
-                    right: right - 5,
-                    bottom,
-                };
+                tab_box.left_padding(10);
+                tab_box.right_padding(10);
 
                 DrawTextW(
                     hdc,
                     &mut window_title,
-                    &mut text_rect,
+                    &mut tab_box.into(),
                     DT_SINGLELINE | DT_CENTER | DT_VCENTER | DT_END_ELLIPSIS,
                 );
             }
 
             ReleaseDC(self.hwnd(), hdc);
         }
-        Ok(())
-    }
 
-    pub fn destroy(&self) -> Result<()> {
-        WindowsApi::close_window(self.hwnd())
+        let mut windows_hwdns: VecDeque<isize> = VecDeque::new();
+        for window in windows {
+            windows_hwdns.push_back(window.hwnd);
+        }
+
+        WINDOWS_BY_BAR_HWNDS.lock().insert(self.hwnd, windows_hwdns);
+        Ok(())
     }
 
     pub fn hide(&self) -> Result<()> {

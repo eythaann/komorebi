@@ -13,6 +13,7 @@ use crate::REGEX_IDENTIFIERS;
 #[derive(Debug, Copy, Clone, Serialize, JsonSchema)]
 #[serde(tag = "type", content = "content")]
 pub enum WindowManagerEvent {
+    ForceUpdate(Window),
     Destroy(WinEvent, Window),
     FocusChange(WinEvent, Window),
     Hide(WinEvent, Window),
@@ -33,6 +34,9 @@ pub enum WindowManagerEvent {
 impl Display for WindowManagerEvent {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::ForceUpdate(window) => {
+                write!(f, "ForceUpdate (Window: {window})")
+            }
             Self::Manage(window) => {
                 write!(f, "Manage (Window: {window})")
             }
@@ -103,6 +107,7 @@ impl WindowManagerEvent {
             | Self::Manage(window)
             | Self::DisplayChange(window)
             | Self::Unmanage(window) => window,
+            | Self::ForceUpdate(window) => window,
         }
     }
 

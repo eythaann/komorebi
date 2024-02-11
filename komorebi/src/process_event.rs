@@ -138,6 +138,9 @@ impl WindowManager {
         self.enforce_workspace_rules()?;
 
         match event {
+            WindowManagerEvent::ForceUpdate(_) => {
+                self.update_focused_workspace(true)?;
+            }
             WindowManagerEvent::Raise(window) => {
                 window.raise();
                 self.has_pending_raise_op = false;

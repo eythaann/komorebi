@@ -26,7 +26,7 @@ pub struct Container {
     id: String,
     windows: Ring<Window>,
     wait_for_minimization: bool,
-    #[serde(skip_serializing)]
+    #[serde(skip)]
     #[getset(get = "pub", get_mut = "pub")]
     top_bar: Option<TopBar>,
 }
@@ -35,12 +35,11 @@ impl_ring_elements!(Container, Window);
 
 impl Default for Container {
     fn default() -> Self {
-        let id = nanoid!();
         Self {
-            id: id.clone(),
+            id: nanoid!(),
             windows: Ring::default(),
             wait_for_minimization: FINISH_MINIMIZE_ANIMATION.load(Ordering::SeqCst),
-            top_bar: TopBar::create(id.as_str()).ok(),
+            top_bar: TopBar::create().ok(),
         }
     }
 }
@@ -52,13 +51,6 @@ impl PartialEq for Container {
 }
 
 impl Container {
-    pub fn destroy(&self) -> Result<()> {
-        if let Some(top_bar) = self.top_bar() {
-            top_bar.destroy()?;
-        }
-        Ok(())
-    }
-
     pub fn hide(&self, omit: Option<HWND>) -> Result<()> {
         if let Some(top_bar) = self.top_bar() {
             top_bar.hide()?;

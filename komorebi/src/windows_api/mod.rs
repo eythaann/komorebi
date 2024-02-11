@@ -1,5 +1,6 @@
 mod data_types;
 mod flags;
+mod graphics;
 
 use std::collections::VecDeque;
 use std::convert::TryFrom;

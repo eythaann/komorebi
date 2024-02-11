@@ -280,7 +280,9 @@ impl Workspace {
 
                 let containers = self.containers();
                 for (i, container) in containers.into_iter().enumerate() {
-                    if let (Some(window), Some(layout)) = (container.focused_window(), layouts.get(i)) {
+                    if let (Some(window), Some(layout)) =
+                        (container.focused_window(), layouts.get(i))
+                    {
                         if should_remove_titlebars && no_titlebar.contains(&window.exe()?) {
                             window.remove_title_bar()?;
                         } else if no_titlebar.contains(&window.exe()?) {
@@ -290,10 +292,14 @@ impl Workspace {
                         if !window.is_maximized() {
                             let mut window_layout = layout.clone();
                             if let Some(top_bar) = container.top_bar() {
-                                top_bar.set_position(&top_bar.get_position_from_container_layout(layout), false)?;
+                                top_bar.set_position(
+                                    &top_bar.get_position_from_container_layout(layout),
+                                    false,
+                                )?;
                                 top_bar.update(container.windows())?;
                                 let height = TAB_HEIGH.load(Ordering::SeqCst);
-                                window_layout.top += height + self.container_padding().or(Some(0)).unwrap();
+                                window_layout.top +=
+                                    height + self.container_padding().or(Some(0)).unwrap();
                                 window_layout.bottom -= height;
                             }
                             window.set_position(&window_layout, invisible_borders, false)?;
@@ -345,14 +351,16 @@ impl Workspace {
         for container in self.containers() {
             if container.windows().is_empty() {
                 container_to_delete.push(container.id().clone());
-                container.destroy()?;
             }
         }
 
         self.containers_mut()
             .retain(|c| !container_to_delete.contains(c.id()));
 
-        Ok((hwnds.len() + floating_hwnds.len(), container_to_delete.len()))
+        Ok((
+            hwnds.len() + floating_hwnds.len(),
+            container_to_delete.len(),
+        ))
     }
 
     pub fn container_for_window(&self, hwnd: isize) -> Option<&Container> {
@@ -373,7 +381,18 @@ impl Workspace {
             .idx_for_window(hwnd)
             .ok_or_else(|| anyhow!("there is no window"))?;
 
+        let mut should_load = false;
+
+        if container.focused_window_idx() != window_idx {
+            should_load = true
+        }
+
         container.focus_window(window_idx);
+
+        if should_load {
+            container.load_focused_window()?;
+        }
+
         self.focus_container(container_idx);
 
         Ok(())
@@ -677,9 +696,6 @@ impl Workspace {
         }
 
         self.new_container_for_window(window);
-
-        let mut container = Container::default();
-        container.add_window(window);
         Ok(())
     }
 
