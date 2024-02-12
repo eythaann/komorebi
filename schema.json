@@ -243,6 +243,45 @@
       ],
       "format": "int32"
     },
+    "top_bar": {
+      "description": "Configurations for top bar on containers",
+      "type": "object",
+      "properties": {
+        "mode": {
+          "description": "When komorebi shows tab bar",
+          "type": "string",
+          "default": "Always",
+          "enum": [
+            "Always",
+            "OnStack",
+            "Never"
+          ]
+        },
+        "height": {
+          "type": "integer",
+          "format": "int32",
+          "default": 40
+        },
+        "tabs": {
+          "type": "object",
+          "properties": {
+            "width": {
+              "type": "integer",
+              "format": "int32",
+              "default": 200
+            },
+            "color": {
+              "description": "Text and icons colors on top bar",
+              "$ref": "#/definitions/HexColor"
+            },
+            "background": {
+              "description": "Background color",
+              "$ref": "#/definitions/HexColor"
+            }
+          }
+        }
+      }
+    },
     "tray_and_multi_window_applications": {
       "description": "Identify tray and multi-window applications",
       "type": [
@@ -298,6 +337,12 @@
     }
   },
   "definitions": {
+    "HexColor": {
+      "description": "RGB hex color",
+      "pattern": "^#([a-fA-F0-9]{6})$",
+      "default": "#FFFFFF",
+      "type": "string"
+    },
     "ActiveWindowBorderColours": {
       "type": "object",
       "required": [

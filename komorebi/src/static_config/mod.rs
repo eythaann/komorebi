@@ -1,3 +1,5 @@
+pub mod top_bar;
+
 use crate::border::Border;
 use crate::current_virtual_desktop;
 use crate::monitor::Monitor;
@@ -53,6 +55,7 @@ use komorebi_core::Rect;
 use komorebi_core::SocketMessage;
 use komorebi_core::WindowContainerBehaviour;
 use parking_lot::Mutex;
+use parking_lot::MutexGuard;
 use regex::Regex;
 use schemars::JsonSchema;
 use serde::Deserialize;
@@ -66,7 +69,15 @@ use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use uds_windows::UnixListener;
 use uds_windows::UnixStream;
-use parking_lot::MutexGuard;
+
+use self::top_bar::TopBarConfig;
+
+pub trait KomorebiConfig
+where
+    Self: Default,
+{
+    fn apply_to_globals(&self) -> Result<()>;
+}
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct Rgb {
@@ -338,6 +349,9 @@ pub struct StaticConfig {
     /// Set display index preferences
     #[serde(skip_serializing_if = "Option::is_none")]
     pub display_index_preferences: Option<HashMap<usize, String>>,
+    /// Top bar configurations
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub top_bar: Option<TopBarConfig>,
 }
 
 impl From<&WindowManager> for StaticConfig {
@@ -469,15 +483,16 @@ impl From<&WindowManager> for StaticConfig {
             object_name_change_applications: None,
             monitor_index_preferences: Option::from(MONITOR_INDEX_PREFERENCES.lock().clone()),
             display_index_preferences: Option::from(DISPLAY_INDEX_PREFERENCES.lock().clone()),
+            top_bar: Option::from(TopBarConfig::default()),
         }
     }
 }
 
 impl StaticConfig {
     fn apply_global(
-        rules: &mut Option<Vec<IdWithIdentifier>>, 
+        rules: &mut Option<Vec<IdWithIdentifier>>,
         identifiers: &mut MutexGuard<'_, Vec<IdWithIdentifier>>,
-        regex_identifiers: &mut MutexGuard<'_, HashMap<String, Regex>>
+        regex_identifiers: &mut MutexGuard<'_, HashMap<String, Regex>>,
     ) -> Result<()> {
         if let Some(rules) = rules {
             for rule in rules {
@@ -499,9 +514,12 @@ impl StaticConfig {
         Ok(())
     }
 
-
     #[allow(clippy::cognitive_complexity, clippy::too_many_lines)]
     fn apply_globals(&mut self) -> Result<()> {
+        if let Some(top_bar) = &self.top_bar {
+            top_bar.apply_to_globals()?;
+        }
+
         if let Some(monitor_index_preferences) = &self.monitor_index_preferences {
             let mut preferences = MONITOR_INDEX_PREFERENCES.lock();
             *preferences = monitor_index_preferences.clone();
@@ -583,7 +601,11 @@ impl StaticConfig {
             );
         }
 
-        let mut float_identifiers: parking_lot::lock_api::MutexGuard<'_, parking_lot::RawMutex, Vec<IdWithIdentifier>> = FLOAT_IDENTIFIERS.lock();
+        let mut float_identifiers: parking_lot::lock_api::MutexGuard<
+            '_,
+            parking_lot::RawMutex,
+            Vec<IdWithIdentifier>,
+        > = FLOAT_IDENTIFIERS.lock();
         let mut exclude_float_identifiers = EXCLUDE_FLOAT_IDENTIFIERS.lock();
         let mut unmanage_identifiers = UNMANAGE_IDENTIFIERS.lock();
         let mut manage_identifiers = MANAGE_IDENTIFIERS.lock();
@@ -593,16 +615,47 @@ impl StaticConfig {
         let mut object_name_change_identifiers = OBJECT_NAME_CHANGE_ON_LAUNCH.lock();
         let mut layered_identifiers = LAYERED_WHITELIST.lock();
 
-        Self::apply_global(&mut self.float_rules, &mut float_identifiers, &mut regex_identifiers)?;
-        Self::apply_global(&mut self.exclude_float_rules, &mut exclude_float_identifiers, &mut regex_identifiers)?;
-        Self::apply_global(&mut self.manage_rules, &mut manage_identifiers, &mut regex_identifiers)?;
-        Self::apply_global(&mut self.unmanage_rules, &mut unmanage_identifiers, &mut regex_identifiers)?;
-        
-        Self::apply_global(&mut self.object_name_change_applications, &mut object_name_change_identifiers, &mut regex_identifiers)?;
-        Self::apply_global(&mut self.layered_applications, &mut layered_identifiers, &mut regex_identifiers)?;
-        Self::apply_global(&mut self.border_overflow_applications, &mut border_overflow_identifiers, &mut regex_identifiers)?;
-        Self::apply_global(&mut self.tray_and_multi_window_applications, &mut tray_and_multi_window_identifiers, &mut regex_identifiers)?;
+        Self::apply_global(
+            &mut self.float_rules,
+            &mut float_identifiers,
+            &mut regex_identifiers,
+        )?;
+        Self::apply_global(
+            &mut self.exclude_float_rules,
+            &mut exclude_float_identifiers,
+            &mut regex_identifiers,
+        )?;
+        Self::apply_global(
+            &mut self.manage_rules,
+            &mut manage_identifiers,
+            &mut regex_identifiers,
+        )?;
+        Self::apply_global(
+            &mut self.unmanage_rules,
+            &mut unmanage_identifiers,
+            &mut regex_identifiers,
+        )?;
 
+        Self::apply_global(
+            &mut self.object_name_change_applications,
+            &mut object_name_change_identifiers,
+            &mut regex_identifiers,
+        )?;
+        Self::apply_global(
+            &mut self.layered_applications,
+            &mut layered_identifiers,
+            &mut regex_identifiers,
+        )?;
+        Self::apply_global(
+            &mut self.border_overflow_applications,
+            &mut border_overflow_identifiers,
+            &mut regex_identifiers,
+        )?;
+        Self::apply_global(
+            &mut self.tray_and_multi_window_applications,
+            &mut tray_and_multi_window_identifiers,
+            &mut regex_identifiers,
+        )?;
 
         if let Some(path) = &self.app_specific_configuration_path {
             let path = resolve_home_path(path)?;

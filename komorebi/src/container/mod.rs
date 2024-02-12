@@ -14,6 +14,7 @@ use serde::Serialize;
 use windows::Win32::Foundation::HWND;
 
 use crate::ring::Ring;
+use crate::static_config::top_bar::TOP_BAR_MODE;
 use crate::window::Window;
 use crate::{FINISH_MINIMIZE_ANIMATION, HIDING_BEHAVIOUR};
 
@@ -39,7 +40,11 @@ impl Default for Container {
             id: nanoid!(),
             windows: Ring::default(),
             wait_for_minimization: FINISH_MINIMIZE_ANIMATION.load(Ordering::SeqCst),
-            top_bar: TopBar::create().ok(),
+            top_bar: if TOP_BAR_MODE.lock().eq("Always") {
+                TopBar::create().ok()
+            } else {
+                None
+            },
         }
     }
 }
@@ -132,6 +137,12 @@ impl Container {
     pub fn remove_window_by_idx(&mut self, idx: usize) -> Option<Window> {
         let window = self.windows_mut().remove(idx);
 
+        if TOP_BAR_MODE.lock().eq("OnStack") {
+            if self.windows().len() <= 1 {
+                self.top_bar = None;
+            }
+        }
+
         if idx != 0 {
             self.focus_window(idx - 1);
         };
@@ -146,6 +157,13 @@ impl Container {
 
     pub fn add_window(&mut self, window: Window) {
         self.windows_mut().push_back(window);
+
+        if TOP_BAR_MODE.lock().eq("OnStack") {
+            if self.windows().len() > 1 && self.top_bar.is_none() {
+                self.top_bar = TopBar::create().ok();
+            }
+        }
+
         self.focus_window(self.windows().len() - 1);
     }
 

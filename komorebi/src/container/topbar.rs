@@ -1,6 +1,5 @@
 use std::{
-    collections::{HashMap, VecDeque},
-    time::Duration,
+    collections::{HashMap, VecDeque}, ops::Deref, time::Duration
 };
 
 use color_eyre::eyre::Result;
@@ -25,11 +24,15 @@ use windows::Win32::{
 use komorebi_core::Rect;
 
 use crate::{
-    utils::str_to_color, window::Window, window_manager_event::WindowManagerEvent,
-    windows_api::WindowsApi, winevent::WinEvent, winevent_listener::WINEVENT_CALLBACK_CHANNEL,
-    DEFAULT_CONTAINER_PADDING, TAB_BACKGROUND, TAB_HEIGH, TAB_TEXT_COLOR, TAB_WIDTH,
-    TRANSPARENCY_COLOUR,
+    static_config::top_bar::{TAB_BACKGROUND, TAB_TEXT_COLOR, TAB_WIDTH, TOP_BAR_HEIGH}, utils::str_to_color, window::Window,
+    window_manager_event::WindowManagerEvent, windows_api::WindowsApi, winevent::WinEvent,
+    winevent_listener::WINEVENT_CALLBACK_CHANNEL, DEFAULT_CONTAINER_PADDING, TRANSPARENCY_COLOUR,
 };
+
+lazy_static! {
+    static ref WINDOWS_BY_BAR_HWNDS: Mutex<HashMap<isize, VecDeque<isize>>> =
+        Mutex::new(HashMap::new());
+}
 
 #[derive(Debug, JsonSchema)]
 pub struct TopBar {
@@ -63,11 +66,6 @@ impl Drop for TopBar {
     }
 }
 
-lazy_static! {
-    static ref WINDOWS_BY_BAR_HWNDS: Mutex<HashMap<isize, VecDeque<isize>>> =
-        Mutex::new(HashMap::new());
-}
-
 impl TopBar {
     unsafe extern "system" fn window_proc(
         hwnd: HWND,
@@ -82,8 +80,8 @@ impl TopBar {
                     let x = l_param.0 as i32 & 0xFFFF;
                     let y = (l_param.0 as i32 >> 16) & 0xFFFF;
 
-                    let width = TAB_WIDTH.load_consume();
-                    let height = TAB_HEIGH.load_consume();
+                    let width = TAB_WIDTH.lock().clone();
+                    let height = TOP_BAR_HEIGH.lock().clone();
                     let gap = DEFAULT_CONTAINER_PADDING.load_consume();
 
                     for (index, win_hwnd) in win_hwnds.iter().enumerate() {
@@ -154,7 +152,7 @@ impl TopBar {
                     None,
                 );
 
-                SetLayeredWindowAttributes(hwnd, COLORREF(0), 0, LWA_COLORKEY)?;
+                SetLayeredWindowAttributes(hwnd, COLORREF(TRANSPARENCY_COLOUR), 0, LWA_COLORKEY)?;
                 hwnd_sender.send(hwnd)?;
 
                 let mut msg = MSG::default();
@@ -184,17 +182,17 @@ impl TopBar {
 
     pub fn get_position_from_container_layout(&self, layout: &Rect) -> Rect {
         Rect {
-            bottom: TAB_HEIGH.load_consume(),
+            bottom: TOP_BAR_HEIGH.lock().clone(),
             ..layout.clone()
         }
     }
 
     pub fn update(&self, windows: &VecDeque<Window>) -> Result<()> {
-        let width = TAB_WIDTH.load_consume();
-        let height = TAB_HEIGH.load_consume();
+        let width = TAB_WIDTH.lock().clone();
+        let height = TOP_BAR_HEIGH.lock().clone();
         let gap = DEFAULT_CONTAINER_PADDING.load_consume();
-        let background = str_to_color(&TAB_BACKGROUND.lock());
-        let text_color = str_to_color(&TAB_TEXT_COLOR.lock());
+        let background = str_to_color(TAB_BACKGROUND.lock().deref());
+        let text_color = str_to_color(TAB_TEXT_COLOR.lock().deref());
 
         unsafe {
             let hdc = GetDC(self.hwnd());

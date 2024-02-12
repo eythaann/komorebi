@@ -23,6 +23,8 @@ use windows::Win32::Foundation::HWND;
 use crate::container::Container;
 use crate::ring::Ring;
 use crate::static_config::WorkspaceConfig;
+use crate::static_config::top_bar::TOP_BAR_HEIGH;
+
 use crate::window::Window;
 use crate::window::WindowDetails;
 use crate::windows_api::WindowsApi;
@@ -31,7 +33,6 @@ use crate::DEFAULT_WORKSPACE_PADDING;
 use crate::INITIAL_CONFIGURATION_LOADED;
 use crate::NO_TITLEBAR;
 use crate::REMOVE_TITLEBARS;
-use crate::TAB_HEIGH;
 
 #[derive(Debug, Clone, Serialize, Getters, CopyGetters, MutGetters, Setters, JsonSchema)]
 pub struct Workspace {
@@ -297,7 +298,7 @@ impl Workspace {
                                     false,
                                 )?;
                                 top_bar.update(container.windows())?;
-                                let height = TAB_HEIGH.load(Ordering::SeqCst);
+                                let height = *TOP_BAR_HEIGH.lock();
                                 window_layout.top +=
                                     height + self.container_padding().or(Some(0)).unwrap();
                                 window_layout.bottom -= height;
