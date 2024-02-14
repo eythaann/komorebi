@@ -226,6 +226,8 @@ lazy_static! {
     // Use app-specific titlebar removal options where possible
     // eg. Windows Terminal, IntelliJ IDEA, Firefox
     static ref NO_TITLEBAR: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
+
+    static ref STACK_BY_CATEGORY: Arc<Mutex<bool>> = Arc::new(Mutex::new(false));
 }
 
 pub static INITIAL_CONFIGURATION_LOADED: AtomicBool = AtomicBool::new(false);

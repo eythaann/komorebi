@@ -1,3 +1,4 @@
+pub mod applications_configuration;
 pub mod top_bar;
 
 use crate::border::Border;
@@ -32,6 +33,7 @@ use crate::MONITOR_INDEX_PREFERENCES;
 use crate::NATIVE_ANIMATION_DELAY;
 use crate::OBJECT_NAME_CHANGE_ON_LAUNCH;
 use crate::REGEX_IDENTIFIERS;
+use crate::STACK_BY_CATEGORY;
 use crate::TRAY_AND_MULTI_WINDOW_IDENTIFIERS;
 use crate::UNMANAGE_IDENTIFIERS;
 use crate::WORKSPACE_RULES;
@@ -69,6 +71,7 @@ use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use uds_windows::UnixListener;
 use uds_windows::UnixStream;
+use applications_configuration::SETTINGS_BY_APP;
 
 use self::top_bar::TopBarConfig;
 
@@ -352,6 +355,9 @@ pub struct StaticConfig {
     /// Top bar configurations
     #[serde(skip_serializing_if = "Option::is_none")]
     pub top_bar: Option<TopBarConfig>,
+    /// Set categories stackin behavior.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub auto_stack_by_category: Option<bool>,
 }
 
 impl From<&WindowManager> for StaticConfig {
@@ -484,6 +490,7 @@ impl From<&WindowManager> for StaticConfig {
             monitor_index_preferences: Option::from(MONITOR_INDEX_PREFERENCES.lock().clone()),
             display_index_preferences: Option::from(DISPLAY_INDEX_PREFERENCES.lock().clone()),
             top_bar: Option::from(TopBarConfig::default()),
+            auto_stack_by_category: None,
         }
     }
 }
@@ -518,6 +525,11 @@ impl StaticConfig {
     fn apply_globals(&mut self) -> Result<()> {
         if let Some(top_bar) = &self.top_bar {
             top_bar.apply_to_globals()?;
+        }
+
+        if let Some(auto_stack_by_category) = self.auto_stack_by_category {
+            let mut preferences = STACK_BY_CATEGORY.lock();
+            *preferences = auto_stack_by_category
         }
 
         if let Some(monitor_index_preferences) = &self.monitor_index_preferences {
@@ -663,6 +675,8 @@ impl StaticConfig {
             let asc = ApplicationConfigurationGenerator::load(&content)?;
 
             for mut entry in asc {
+                SETTINGS_BY_APP.lock().add(entry.clone().into())?;
+
                 if let Some(float) = entry.float_identifiers {
                     for f in float {
                         let mut without_comment: IdWithIdentifier = f.into();
