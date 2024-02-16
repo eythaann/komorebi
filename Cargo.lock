@@ -788,7 +788,7 @@ dependencies = [
 
 [[package]]
 name = "komorebi"
-version = "0.1.19"
+version = "0.1.21"
 dependencies = [
  "bitflags 2.4.2",
  "clap",
@@ -828,7 +828,7 @@ dependencies = [
 
 [[package]]
 name = "komorebi-core"
-version = "0.1.19"
+version = "0.1.21"
 dependencies = [
  "clap",
  "color-eyre",
@@ -844,7 +844,7 @@ dependencies = [
 
 [[package]]
 name = "komorebic"
-version = "0.1.19"
+version = "0.1.21"
 dependencies = [
  "clap",
  "color-eyre",
@@ -871,7 +871,7 @@ dependencies = [
 
 [[package]]
 name = "komorebic-no-console"
-version = "0.1.19"
+version = "0.1.21"
 
 [[package]]
 name = "lazy_static"
