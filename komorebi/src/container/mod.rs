@@ -11,6 +11,7 @@ use komorebi_core::HidingBehaviour;
 use nanoid::nanoid;
 use schemars::JsonSchema;
 use serde::Serialize;
+use serde::Deserialize;
 use windows::Win32::Foundation::HWND;
 
 use crate::ring::Ring;
@@ -20,7 +21,7 @@ use crate::{FINISH_MINIMIZE_ANIMATION, HIDING_BEHAVIOUR};
 
 use self::topbar::TopBar;
 
-#[derive(Debug, Clone, Serialize, Getters, MutGetters, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, Getters, MutGetters, JsonSchema)]
 pub struct Container {
     #[serde(skip_serializing)]
     #[getset(get = "pub")]

@@ -11,6 +11,7 @@ use getset::Getters;
 use getset::MutGetters;
 use getset::Setters;
 use schemars::JsonSchema;
+use serde::Deserialize;
 use serde::Serialize;
 
 use komorebi_core::HidingBehaviour;
@@ -22,7 +23,9 @@ use crate::workspace::Workspace;
 use crate::HIDING_BEHAVIOUR;
 use crate::FINISH_MINIMIZE_ANIMATION;
 
-#[derive(Debug, Clone, Serialize, Getters, CopyGetters, MutGetters, Setters, JsonSchema)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize, Getters, CopyGetters, MutGetters, Setters, JsonSchema,
+)]
 pub struct Monitor {
     #[getset(get_copy = "pub", set = "pub")]
     id: isize,
@@ -39,10 +42,9 @@ pub struct Monitor {
     #[getset(get_copy = "pub", set = "pub")]
     work_area_offset: Option<Rect>,
     workspaces: Ring<Workspace>,
-    #[serde(skip_serializing)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[getset(get_copy = "pub", set = "pub")]
     last_focused_workspace: Option<usize>,
-    #[serde(skip_serializing)]
     #[getset(get_mut = "pub")]
     workspace_names: HashMap<usize, String>,
     wait_for_minimization: bool,
