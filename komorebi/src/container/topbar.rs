@@ -131,8 +131,6 @@ impl TopBar {
             RegisterClassW(&wnd_class);
         }
 
-        print!("\n\n creating top bar\n\n");
-
         let (hwnd_sender, hwnd_receiver) = crossbeam_channel::bounded::<HWND>(1);
 
         std::thread::spawn(move || -> Result<()> {
