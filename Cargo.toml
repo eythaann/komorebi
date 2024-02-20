@@ -9,6 +9,9 @@ members = [
     "komorebic-no-console",
 ]
 
+[profile.release]
+opt-level = 1
+
 [workspace.dependencies]
 windows-interface = { version = "0.52" }
 windows-implement = { version = "0.52" }
