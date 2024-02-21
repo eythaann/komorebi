@@ -23,7 +23,6 @@ use crate::DATA_DIR;
 use crate::DEFAULT_CONTAINER_PADDING;
 use crate::DEFAULT_WORKSPACE_PADDING;
 use crate::DISPLAY_INDEX_PREFERENCES;
-use crate::EXCLUDE_FLOAT_IDENTIFIERS;
 use crate::FINISH_MINIMIZE_ANIMATION;
 use crate::FLOAT_IDENTIFIERS;
 use crate::HIDING_BEHAVIOUR;
@@ -618,7 +617,6 @@ impl StaticConfig {
             parking_lot::RawMutex,
             Vec<IdWithIdentifier>,
         > = FLOAT_IDENTIFIERS.lock();
-        let mut exclude_float_identifiers = EXCLUDE_FLOAT_IDENTIFIERS.lock();
         let mut unmanage_identifiers = UNMANAGE_IDENTIFIERS.lock();
         let mut manage_identifiers = MANAGE_IDENTIFIERS.lock();
         let mut regex_identifiers = REGEX_IDENTIFIERS.lock();
@@ -630,11 +628,6 @@ impl StaticConfig {
         Self::apply_global(
             &mut self.float_rules,
             &mut float_identifiers,
-            &mut regex_identifiers,
-        )?;
-        Self::apply_global(
-            &mut self.exclude_float_rules,
-            &mut exclude_float_identifiers,
             &mut regex_identifiers,
         )?;
         Self::apply_global(

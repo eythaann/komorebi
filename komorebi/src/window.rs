@@ -1,5 +1,4 @@
 use crate::com::SetCloak;
-use crate::EXCLUDE_FLOAT_IDENTIFIERS;
 use crate::UNMANAGE_IDENTIFIERS;
 use crate::NATIVE_ANIMATION_DELAY;
 use crate::static_config::applications_configuration::SETTINGS_BY_APP;
@@ -540,8 +539,8 @@ impl Window {
                 should_act(&title, &exe_name, &class, identifiers, &REGEX_IDENTIFIERS.lock())
             };
             let should_float = _should_act(&FLOAT_IDENTIFIERS.lock());
-            let is_excluded = _should_act(&EXCLUDE_FLOAT_IDENTIFIERS.lock());
-            return should_float && !is_excluded;
+            let is_forced = _should_act(&MANAGE_IDENTIFIERS.lock());
+            return should_float && !is_forced;
         }
 
         return false;

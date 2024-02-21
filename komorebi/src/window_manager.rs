@@ -51,7 +51,6 @@ use crate::BORDER_HWND;
 use crate::BORDER_OVERFLOW_IDENTIFIERS;
 use crate::DATA_DIR;
 use crate::DISPLAY_INDEX_PREFERENCES;
-use crate::EXCLUDE_FLOAT_IDENTIFIERS;
 use crate::FLOAT_IDENTIFIERS;
 use crate::HOME_DIR;
 use crate::LAYERED_WHITELIST;
@@ -101,7 +100,6 @@ pub struct State {
     pub has_pending_raise_op: bool,
     pub remove_titlebars: bool,
     pub float_identifiers: Vec<IdWithIdentifier>,
-    pub exclude_float_identifiers: Vec<IdWithIdentifier>,
     pub unmanage_identifiers: Vec<IdWithIdentifier>,
     pub manage_identifiers: Vec<IdWithIdentifier>,
     pub layered_whitelist: Vec<IdWithIdentifier>,
@@ -133,7 +131,6 @@ impl From<&WindowManager> for State {
             has_pending_raise_op: wm.has_pending_raise_op,
             remove_titlebars: REMOVE_TITLEBARS.load(Ordering::SeqCst),
             float_identifiers: FLOAT_IDENTIFIERS.lock().clone(),
-            exclude_float_identifiers: EXCLUDE_FLOAT_IDENTIFIERS.lock().clone(),
             unmanage_identifiers: UNMANAGE_IDENTIFIERS.lock().clone(),
             manage_identifiers: MANAGE_IDENTIFIERS.lock().clone(),
             layered_whitelist: LAYERED_WHITELIST.lock().clone(),

@@ -170,7 +170,6 @@ lazy_static! {
         }
     ]));
     static ref FLOAT_IDENTIFIERS: Arc<Mutex<Vec<IdWithIdentifier>>> = Arc::new(Mutex::new(vec![]));
-    static ref EXCLUDE_FLOAT_IDENTIFIERS: Arc<Mutex<Vec<IdWithIdentifier>>> = Arc::new(Mutex::new(vec![]));
     static ref PERMAIGNORE_CLASSES: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![
         "Chrome_RenderWidgetHostHWND".to_string(),
     ]));
