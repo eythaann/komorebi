@@ -10,6 +10,13 @@
         "null"
       ]
     },
+    "display_index_preferences": {
+      "description": "Set display index preferences",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
     "active_window_border_colours": {
       "description": "Active window border colours for different container types",
       "anyOf": [
@@ -73,17 +80,6 @@
         }
       }
     },
-    "border_offset": {
-      "description": "DEPRECATED from v0.1.19: use active_window_border_offset instead",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Rect"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
     "border_overflow_applications": {
       "description": "Identify border overflow applications",
       "type": [
@@ -93,14 +89,6 @@
       "items": {
         "$ref": "#/definitions/IdWithIdentifier"
       }
-    },
-    "border_width": {
-      "description": "DEPRECATED from v0.1.19: use active_window_border_width instead",
-      "type": [
-        "integer",
-        "null"
-      ],
-      "format": "int32"
     },
     "cross_monitor_move_behaviour": {
       "description": "Determine what happens when a window is moved across a monitor boundary (default: Swap)",
