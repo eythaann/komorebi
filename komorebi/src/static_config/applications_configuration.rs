@@ -8,7 +8,6 @@ use std::{
     sync::Arc,
 };
 
-use color_eyre::eyre::Result;
 use getset::Getters;
 use lazy_static::lazy_static;
 use parking_lot::Mutex;
@@ -48,12 +47,14 @@ impl From<IdWithIdentifier> for AppIdentifier {
 }
 
 impl AppIdentifier {
-    pub fn cache_regex(&mut self) -> Result<()> {
+    pub fn cache_regex(&mut self) {
         if matches!(self.matching_strategy, MatchingStrategy::Regex) {
-            let re = Regex::new(&self.id)?;
-            REGEX_IDENTIFIERS.lock().insert(self.id.clone(), re);
+            let result = Regex::new(&self.id);
+            if let Some(re) = result.ok() {
+                let mut regex_identifiers = REGEX_IDENTIFIERS.lock();
+                regex_identifiers.insert(self.id.clone(), re);
+            }
         }
-        Ok(())
     }
 
     pub fn validate(&self, title: &str, class: &str, exe: &str) -> bool {
@@ -157,11 +158,10 @@ impl Default for AppsConfigurations {
 }
 
 impl AppsConfigurations {
-    pub fn add(&mut self, mut app: AppConfig) -> Result<()> {
-        app.identifier.cache_regex()?;
+    pub fn add(&mut self, mut app: AppConfig) {
+        app.identifier.cache_regex();
         self.apps.push_front(app);
         self.cache.clear();
-        Ok(())
     }
 
     pub fn get_by_window(&mut self, window: &Window) -> Option<&AppConfig> {

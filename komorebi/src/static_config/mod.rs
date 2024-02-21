@@ -668,8 +668,11 @@ impl StaticConfig {
             let asc = ApplicationConfigurationGenerator::load(&content)?;
 
             for mut entry in asc {
-                SETTINGS_BY_APP.lock().add(entry.clone().into())?;
+                drop(regex_identifiers);
+                SETTINGS_BY_APP.lock().add(entry.clone().into());               
+                regex_identifiers = REGEX_IDENTIFIERS.lock();
 
+                // Todo remove all these
                 if let Some(float) = entry.float_identifiers {
                     for f in float {
                         let mut without_comment: IdWithIdentifier = f.into();
