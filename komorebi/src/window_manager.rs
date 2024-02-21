@@ -40,6 +40,7 @@ use crate::current_virtual_desktop;
 use crate::load_configuration;
 use crate::monitor::Monitor;
 use crate::ring::Ring;
+use crate::static_config::applications_configuration::SETTINGS_BY_APP;
 use crate::static_config::StaticConfig;
 use crate::window::Window;
 use crate::window_manager_event::WindowManagerEvent;
@@ -552,7 +553,6 @@ impl WindowManager {
                 );
             }
         }
-
         Ok(())
     }
 
@@ -567,6 +567,21 @@ impl WindowManager {
             .ok_or_else(|| anyhow!("there is no monitor with that index"))?
             .focused_workspace_idx();
 
+        let mut workspaces_names: Vec<Vec<String>> = Vec::new();
+        for monitor in self.monitors() {
+            let mut monitor_ws_names = Vec::new();
+
+            for workspace in monitor.workspaces() {
+                if let Some(name) = workspace.name() {
+                    monitor_ws_names.push(name.clone())
+                } else {
+                    monitor_ws_names.push("__none__".to_string())
+                }
+            }
+
+            workspaces_names.push(monitor_ws_names);
+        }
+
         for (origin_monitor_idx, monitor) in self.monitors().iter().enumerate() {
             for (origin_workspace_idx, workspace) in monitor.workspaces().iter().enumerate() {
                 for window in workspace
@@ -575,6 +590,32 @@ impl WindowManager {
                     .flatten()
                     .chain(workspace.floating_windows())
                 {
+                    if let Some(config) = SETTINGS_BY_APP.lock().get_by_window(window) {
+                        if let (Some(target_monitor_idx), Some(binded_workspace_name)) =
+                            (config.binded_monitor_idx(), config.binded_workspace_name())
+                        {
+                            if let Some(workspaces_names) =
+                                workspaces_names.get(*target_monitor_idx)
+                            {
+                                if let Some(target_workspace_idx) = workspaces_names
+                                    .iter()
+                                    .position(|ws| ws == binded_workspace_name)
+                                {
+                                    self.add_window_handle_to_move(
+                                        &window.title()?,
+                                        window.hwnd,
+                                        origin_monitor_idx,
+                                        origin_workspace_idx,
+                                        *target_monitor_idx,
+                                        target_workspace_idx,
+                                        &mut to_move,
+                                    );
+                                }
+                            }
+                        }
+                    }
+
+                    // wil do nothing, todo remove it
                     self.add_window_handle_to_move_based_on_workspace_rule(
                         window,
                         origin_monitor_idx,
@@ -1133,7 +1174,7 @@ impl WindowManager {
         let focused_floating_window = focused_workspace.remove_focused_floating_window();
         let focused_container = match focused_floating_window {
             None => focused_workspace.remove_focused_container(),
-            Some(_) => None
+            Some(_) => None,
         };
 
         let mut target_monitor = focused_monitor;

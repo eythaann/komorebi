@@ -575,6 +575,7 @@ macro_rules! gen_application_target_subcommand_args {
 gen_application_target_subcommand_args! {
     FloatRule,
     ManageRule,
+    UnmanageRule,
     IdentifyTrayApplication,
     IdentifyLayeredApplication,
     IdentifyObjectNameChangeApplication,
@@ -1064,6 +1065,9 @@ enum SubCommand {
     /// Add a rule to always float the specified application
     #[clap(arg_required_else_help = true)]
     FloatRule(FloatRule),
+    /// Add a rule to always unmanage the specified application
+    #[clap(arg_required_else_help = true)]
+    UnmanageRule(UnmanageRule),
     /// Add a rule to always manage the specified application
     #[clap(arg_required_else_help = true)]
     ManageRule(ManageRule),
@@ -1854,6 +1858,9 @@ Stop-Process -Name:whkd -ErrorAction SilentlyContinue
         }
         SubCommand::FloatRule(arg) => {
             send_message(&SocketMessage::FloatRule(arg.identifier, arg.id).as_bytes()?)?;
+        }
+        SubCommand::UnmanageRule(arg) => {
+            send_message(&SocketMessage::UnmanageRule(arg.identifier, arg.id).as_bytes()?)?;
         }
         SubCommand::ManageRule(arg) => {
             send_message(&SocketMessage::ManageRule(arg.identifier, arg.id).as_bytes()?)?;

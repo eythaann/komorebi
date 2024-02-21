@@ -110,6 +110,10 @@ pub struct AppConfig {
     #[getset(get = "pub")]
     category: Option<String>,
     #[getset(get = "pub")]
+    binded_monitor_idx: Option<usize>,
+    #[getset(get = "pub")]
+    binded_workspace_name: Option<String>,
+    #[getset(get = "pub")]
     identifier: AppIdentifier,
     #[allow(dead_code)] // remove on use after refactor
     #[getset(get = "pub")]
@@ -123,6 +127,8 @@ impl From<ApplicationConfiguration> for AppConfig {
             category: value.category,
             identifier: value.identifier.into(),
             options: value.options.map_or_else(|| Vec::new(), |options| options),
+            binded_monitor_idx: value.binded_monitor,
+            binded_workspace_name: value.binded_workspace,
         }
     }
 }

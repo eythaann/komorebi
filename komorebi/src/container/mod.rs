@@ -177,11 +177,9 @@ impl Container {
         let mut categories = Vec::new();
         for window in self.windows() {
             if let Some(category) = window.category() {
-                print!("\n\ncategory {}\n\n", category);
                 categories.push(category);
             }
         }
-
         categories
     }
 }

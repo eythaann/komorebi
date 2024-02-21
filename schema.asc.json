@@ -9,8 +9,8 @@
     "ApplicationConfiguration": {
       "type": "object",
       "required": [
-        "identifier",
-        "name"
+        "name",
+        "identifier"
       ],
       "properties": {
         "float_identifiers": {
@@ -27,6 +27,24 @@
         },
         "name": {
           "type": "string"
+        },
+        "category": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "binded_workspace": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "binded_monitor": {
+          "type": [
+            "null",
+            "number"
+          ]
         },
         "options": {
           "type": [
@@ -54,7 +72,9 @@
         "layered",
         "border_overflow",
         "tray_and_multi_window",
-        "force"
+        "force",
+        "unmanage",
+        "float"
       ]
     },
     "IdWithIdentifier": {

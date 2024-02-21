@@ -8,7 +8,7 @@ use strum::EnumString;
 
 use crate::ApplicationIdentifier;
 
-#[derive(Clone, Debug, Serialize, Deserialize, Display, EnumString, ValueEnum, JsonSchema)]
+#[derive(Clone, Debug, Serialize, Deserialize, Display, EnumString, ValueEnum, JsonSchema, PartialEq)]
 #[strum(serialize_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
 pub enum ApplicationOptions {
@@ -17,6 +17,8 @@ pub enum ApplicationOptions {
     BorderOverflow,
     TrayAndMultiWindow,
     Force,
+    Float,
+    Unmanage,
 }
 
 impl ApplicationOptions {
@@ -37,6 +39,12 @@ impl ApplicationOptions {
             }
             ApplicationOptions::Force => {
                 format!("komorebic.exe manage-rule {kind} \"{id}\"")
+            }
+            ApplicationOptions::Float => {
+                format!("komorebic.exe float-rule {kind} \"{id}\"")
+            }
+            ApplicationOptions::Unmanage => {
+                format!("komorebic.exe unmanage-rule {kind} \"{id}\"")
             }
         }
     }
@@ -92,6 +100,8 @@ impl From<IdWithIdentifierAndComment> for IdWithIdentifier {
 pub struct ApplicationConfiguration {
     pub name: String,
     pub category: Option<String>,
+    pub binded_monitor: Option<usize>,
+    pub binded_workspace: Option<String>,
     pub identifier: IdWithIdentifier,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub options: Option<Vec<ApplicationOptions>>,

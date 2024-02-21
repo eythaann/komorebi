@@ -73,6 +73,7 @@ use crate::REMOVE_TITLEBARS;
 use crate::SUBSCRIPTION_PIPES;
 use crate::TCP_CONNECTIONS;
 use crate::TRAY_AND_MULTI_WINDOW_IDENTIFIERS;
+use crate::UNMANAGE_IDENTIFIERS;
 use crate::WORKSPACE_RULES;
 
 #[tracing::instrument]
@@ -272,6 +273,24 @@ impl WindowManager {
 
                 if should_push {
                     manage_identifiers.push(IdWithIdentifier {
+                        kind: identifier,
+                        id: id.clone(),
+                        matching_strategy: Option::from(MatchingStrategy::Legacy),
+                    });
+                }
+            }
+            SocketMessage::UnmanageRule(identifier, ref id) => {
+                let mut unmanage_identifiers = UNMANAGE_IDENTIFIERS.lock();
+
+                let mut should_push = true;
+                for m in &*unmanage_identifiers {
+                    if m.id.eq(id) {
+                        should_push = false;
+                    }
+                }
+
+                if should_push {
+                    unmanage_identifiers.push(IdWithIdentifier {
                         kind: identifier,
                         id: id.clone(),
                         matching_strategy: Option::from(MatchingStrategy::Legacy),

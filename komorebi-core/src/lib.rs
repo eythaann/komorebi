@@ -142,6 +142,7 @@ pub enum SocketMessage {
     WorkspaceRule(ApplicationIdentifier, String, usize, usize),
     NamedWorkspaceRule(ApplicationIdentifier, String, String),
     FloatRule(ApplicationIdentifier, String),
+    UnmanageRule(ApplicationIdentifier, String),
     ManageRule(ApplicationIdentifier, String),
     IdentifyObjectNameChangeApplication(ApplicationIdentifier, String),
     IdentifyTrayApplication(ApplicationIdentifier, String),

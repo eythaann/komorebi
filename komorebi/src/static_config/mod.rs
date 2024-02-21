@@ -37,6 +37,7 @@ use crate::STACK_BY_CATEGORY;
 use crate::TRAY_AND_MULTI_WINDOW_IDENTIFIERS;
 use crate::UNMANAGE_IDENTIFIERS;
 use crate::WORKSPACE_RULES;
+use applications_configuration::SETTINGS_BY_APP;
 use color_eyre::Result;
 use crossbeam_channel::Receiver;
 use hotwatch::notify::DebouncedEvent;
@@ -71,7 +72,6 @@ use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use uds_windows::UnixListener;
 use uds_windows::UnixStream;
-use applications_configuration::SETTINGS_BY_APP;
 
 use self::top_bar::TopBarConfig;
 
@@ -701,6 +701,42 @@ impl StaticConfig {
                 if let Some(options) = entry.options {
                     for o in options {
                         match o {
+                            ApplicationOptions::Float => {
+                                if entry.identifier.matching_strategy.is_none() {
+                                    entry.identifier.matching_strategy =
+                                        Option::from(MatchingStrategy::Legacy);
+                                }
+
+                                if !float_identifiers.contains(&entry.identifier) {
+                                    float_identifiers.push(entry.identifier.clone());
+
+                                    if matches!(
+                                        entry.identifier.matching_strategy,
+                                        Some(MatchingStrategy::Regex)
+                                    ) {
+                                        let re = Regex::new(&entry.identifier.id)?;
+                                        regex_identifiers.insert(entry.identifier.id.clone(), re);
+                                    }
+                                }
+                            }
+                            ApplicationOptions::Unmanage => {
+                                if entry.identifier.matching_strategy.is_none() {
+                                    entry.identifier.matching_strategy =
+                                        Option::from(MatchingStrategy::Legacy);
+                                }
+
+                                if !unmanage_identifiers.contains(&entry.identifier) {
+                                    unmanage_identifiers.push(entry.identifier.clone());
+
+                                    if matches!(
+                                        entry.identifier.matching_strategy,
+                                        Some(MatchingStrategy::Regex)
+                                    ) {
+                                        let re = Regex::new(&entry.identifier.id)?;
+                                        regex_identifiers.insert(entry.identifier.id.clone(), re);
+                                    }
+                                }
+                            }
                             ApplicationOptions::ObjectNameChange => {
                                 if entry.identifier.matching_strategy.is_none() {
                                     entry.identifier.matching_strategy =
@@ -920,6 +956,8 @@ impl StaticConfig {
                 }
             }
         }
+
+        wm.enforce_workspace_rules()?;
 
         if value.active_window_border == Some(true) {
             if BORDER_HWND.load(Ordering::SeqCst) == 0 {
