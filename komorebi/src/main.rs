@@ -167,6 +167,11 @@ lazy_static! {
             kind: ApplicationIdentifier::Exe,
             id: String::from("komorebi.exe"),
             matching_strategy: Option::from(MatchingStrategy::Equals),
+        },
+        IdWithIdentifier {
+            kind: ApplicationIdentifier::Exe,
+            id: String::from("komorebi-ui.exe"),
+            matching_strategy: Option::from(MatchingStrategy::Equals),
         }
     ]));
     static ref FLOAT_IDENTIFIERS: Arc<Mutex<Vec<IdWithIdentifier>>> = Arc::new(Mutex::new(vec![]));
