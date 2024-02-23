@@ -300,9 +300,9 @@ impl Workspace {
                                 )?;
                                 top_bar.update(container.windows())?;
                                 let height = *TOP_BAR_HEIGH.lock();
-                                window_layout.top +=
-                                    height + self.container_padding().or(Some(0)).unwrap();
-                                window_layout.bottom -= height;
+                                let total_height = height + self.container_padding().or(Some(0)).unwrap();
+                                window_layout.top += total_height;
+                                window_layout.bottom -= total_height;
                             }
                             window.set_position(&window_layout, invisible_borders, false)?;
                         }
