@@ -54,6 +54,9 @@
           "items": {
             "$ref": "#/definitions/ApplicationOptions"
           }
+        },
+        "invisible_borders": {
+          "$ref": "#/definitions/Rect"
         }
       }
     },
@@ -143,6 +146,37 @@
         "Contains",
         "Regex"
       ]
+    },
+    "Rect": {
+      "type": "object",
+      "required": [
+        "bottom",
+        "left",
+        "right",
+        "top"
+      ],
+      "properties": {
+        "bottom": {
+          "description": "The bottom point in a Win32 Rect",
+          "type": "integer",
+          "format": "int32"
+        },
+        "left": {
+          "description": "The left point in a Win32 Rect",
+          "type": "integer",
+          "format": "int32"
+        },
+        "right": {
+          "description": "The right point in a Win32 Rect",
+          "type": "integer",
+          "format": "int32"
+        },
+        "top": {
+          "description": "The top point in a Win32 Rect",
+          "type": "integer",
+          "format": "int32"
+        }
+      }
     }
   }
 }

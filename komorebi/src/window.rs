@@ -1,4 +1,5 @@
 use crate::com::SetCloak;
+use crate::static_config::applications_configuration::AppConfig;
 use crate::UNMANAGE_IDENTIFIERS;
 use crate::NATIVE_ANIMATION_DELAY;
 use crate::static_config::applications_configuration::SETTINGS_BY_APP;
@@ -36,7 +37,6 @@ use crate::styles::WindowStyle;
 use crate::window_manager_event::WindowManagerEvent;
 use crate::windows_api::WindowsApi;
 use crate::ALT_FOCUS_HACK;
-use crate::BORDER_OVERFLOW_IDENTIFIERS;
 use crate::FLOAT_IDENTIFIERS;
 use crate::HIDDEN_HWNDS;
 use crate::MAXIMIZED_HWNDS;
@@ -143,6 +143,13 @@ impl Window {
         None
     }
 
+    pub fn config(&self) -> Option<AppConfig> {
+        if let Some(config) = SETTINGS_BY_APP.lock().get_by_window(self) {
+            return Option::from(config.clone());
+        }
+        None
+    }
+
     pub fn center(&mut self, work_area: &Rect, invisible_borders: &Rect) -> Result<()> {
         let half_width = work_area.right / 2;
         let half_weight = work_area.bottom / 2;
@@ -162,32 +169,25 @@ impl Window {
     pub fn set_position(
         &self,
         layout: &Rect,
-        invisible_borders: &Rect,
+        invisible_borders: &Rect, // Todo remove global invisible border as injection and border overflow option
         top: bool,
     ) -> Result<()> {
         let mut rect = *layout;
 
-        let border_overflows = BORDER_OVERFLOW_IDENTIFIERS.lock();
-        let regex_identifiers = REGEX_IDENTIFIERS.lock();
+        let specifit_invisible_borders = self.config().and_then(|c| *c.invisible_borders());
 
-        let title = &self.title()?;
-        let class = &self.class()?;
-        let exe_name = &self.exe()?;
-
-        let should_remove_border = !should_act(
-            title,
-            exe_name,
-            class,
-            &border_overflows,
-            &regex_identifiers,
-        );
-
-        if should_remove_border {
-            // Remove the invisible borders
+        if specifit_invisible_borders.is_none() {
             rect.left -= invisible_borders.left;
             rect.top -= invisible_borders.top;
             rect.right += invisible_borders.right;
             rect.bottom += invisible_borders.bottom;
+        }
+
+        if let Some(specifit_invisible_borders) = specifit_invisible_borders {
+            rect.left -= specifit_invisible_borders.left;
+            rect.top -= specifit_invisible_borders.top;
+            rect.right += specifit_invisible_borders.right;
+            rect.bottom += specifit_invisible_borders.bottom;
         }
 
         WindowsApi::position_window(self.hwnd(), &rect, top)

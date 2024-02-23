@@ -20,6 +20,7 @@ use komorebi_core::{
     ApplicationIdentifier,
 };
 
+use crate::Rect;
 use crate::{window::Window, REGEX_IDENTIFIERS};
 
 lazy_static! {
@@ -119,6 +120,8 @@ pub struct AppConfig {
     #[allow(dead_code)] // remove on use after refactor
     #[getset(get = "pub")]
     options: Vec<ApplicationOptions>,
+    #[getset(get = "pub")]
+    invisible_borders: Option<Rect>,
 }
 
 impl From<ApplicationConfiguration> for AppConfig {
@@ -130,6 +133,7 @@ impl From<ApplicationConfiguration> for AppConfig {
             options: value.options.map_or_else(|| Vec::new(), |options| options),
             binded_monitor_idx: value.binded_monitor,
             binded_workspace_name: value.binded_workspace,
+            invisible_borders: value.invisible_borders,
         }
     }
 }

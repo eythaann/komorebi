@@ -7,6 +7,7 @@ use strum::Display;
 use strum::EnumString;
 
 use crate::ApplicationIdentifier;
+use crate::Rect;
 
 #[derive(Clone, Debug, Serialize, Deserialize, Display, EnumString, ValueEnum, JsonSchema, PartialEq)]
 #[strum(serialize_all = "snake_case")]
@@ -99,14 +100,19 @@ impl From<IdWithIdentifierAndComment> for IdWithIdentifier {
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct ApplicationConfiguration {
     pub name: String,
-    pub category: Option<String>,
-    pub binded_monitor: Option<usize>,
-    pub binded_workspace: Option<String>,
     pub identifier: IdWithIdentifier,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub category: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub binded_monitor: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub binded_workspace: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub options: Option<Vec<ApplicationOptions>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub float_identifiers: Option<Vec<IdWithIdentifierAndComment>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub invisible_borders: Option<Rect>,
 }
 
 impl ApplicationConfiguration {
