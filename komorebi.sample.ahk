@@ -1,6 +1,4 @@
 #SingleInstance Force
-#NoTrayIcon
-
 #Include komorebic.lib.ahk
 
 /**
@@ -45,7 +43,7 @@
 
 ; Manipulate windows
 #f::ToggleFloat()
-#+::ToggleMonocle()
+#m::ToggleMonocle()
 
 ; Window manager options
 #+p::TogglePause()
