@@ -921,6 +921,16 @@ impl WindowManager {
             }
         }
 
+        // if we passed false for follow_focus
+        if !follow_focus
+            && self.focused_container_mut()?.windows().len() > 1
+            && self.focused_workspace()?.monocle_container().is_none()
+        {
+            if let Ok(window) = self.focused_window_mut() {
+                window.focus(self.mouse_follows_focus)?;
+            }
+        };
+
         Ok(())
     }
 
