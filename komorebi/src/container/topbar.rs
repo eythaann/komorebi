@@ -1,5 +1,7 @@
 use std::{
-    collections::{HashMap, VecDeque}, ops::Deref, time::Duration
+    collections::{HashMap, VecDeque},
+    ops::Deref,
+    time::Duration,
 };
 
 use color_eyre::eyre::Result;
@@ -24,9 +26,13 @@ use windows::Win32::{
 use komorebi_core::Rect;
 
 use crate::{
-    static_config::top_bar::{TAB_BACKGROUND, TAB_TEXT_COLOR, TAB_WIDTH, TOP_BAR_HEIGH}, utils::str_to_color, window::Window,
-    window_manager_event::WindowManagerEvent, windows_api::WindowsApi, winevent::WinEvent,
-    winevent_listener::WINEVENT_CALLBACK_CHANNEL, DEFAULT_CONTAINER_PADDING, TRANSPARENCY_COLOUR,
+    static_config::top_bar::{TAB_BACKGROUND, TAB_TEXT_COLOR, TAB_WIDTH, TOP_BAR_HEIGH},
+    utils::str_to_color,
+    window::Window,
+    window_manager_event::WindowManagerEvent,
+    windows_api::WindowsApi,
+    winevent::WinEvent,
+    winevent_listener, DEFAULT_CONTAINER_PADDING, TRANSPARENCY_COLOUR,
 };
 
 lazy_static! {
@@ -92,12 +98,12 @@ impl TopBar {
 
                         if x >= left && x <= right && y >= top && y <= bottom {
                             let window = Window { hwnd: *win_hwnd };
-                            let event_sender = WINEVENT_CALLBACK_CHANNEL.lock();
-                            let _ = event_sender.0.send(WindowManagerEvent::FocusChange(
+                            let _ = winevent_listener::event_tx().send(WindowManagerEvent::FocusChange(
                                 WinEvent::ObjectFocus,
                                 window,
                             ));
-                            let _ = event_sender.0.send(WindowManagerEvent::ForceUpdate(window));
+                            let _ = winevent_listener::event_tx()
+                                .send(WindowManagerEvent::ForceUpdate(window));
                         }
                     }
                 }
