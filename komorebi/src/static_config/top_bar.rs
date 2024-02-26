@@ -28,8 +28,8 @@ pub struct TopBarConfig {
     tabs: Option<TabsConfig>,
 }
 
-impl Default for TopBarConfig {
-    fn default() -> Self {
+impl KomorebiConfig for TopBarConfig {
+    fn clone_globals() -> Self {
         Self {
             mode: Some(TOP_BAR_MODE.lock().clone()),
             height: Some(TOP_BAR_HEIGH.lock().clone()),
@@ -40,9 +40,7 @@ impl Default for TopBarConfig {
             }),
         }
     }
-}
 
-impl KomorebiConfig for TopBarConfig {
     fn apply_to_globals(&self) -> color_eyre::eyre::Result<()> {
         if let Some(height) = self.height {
             *TOP_BAR_HEIGH.lock() = height;

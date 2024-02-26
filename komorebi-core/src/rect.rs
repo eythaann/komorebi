@@ -38,6 +38,7 @@ impl From<Rect> for RECT {
 }
 
 impl Rect {
+    /** x2, y2 are relative to x1, y1 */
     pub fn add_padding<T>(&mut self, padding: T)
     where
         T: Into<Option<i32>>,
@@ -56,6 +57,14 @@ impl Rect {
 
     pub fn right_padding(&mut self, padding: i32){
         self.right -= padding;
+    }
+
+    /** x2, y2 are absolute positions */
+    pub fn add_gui_padding(&mut self, padding: i32){
+        self.left += padding;
+        self.top += padding;
+        self.right -= padding;
+        self.bottom -= padding;
     }
 
     #[must_use]

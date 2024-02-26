@@ -1,5 +1,6 @@
 pub mod applications_configuration;
 pub mod top_bar;
+pub mod popup;
 
 use crate::border::Border;
 use crate::current_virtual_desktop;
@@ -36,7 +37,9 @@ use crate::STACK_BY_CATEGORY;
 use crate::TRAY_AND_MULTI_WINDOW_IDENTIFIERS;
 use crate::UNMANAGE_IDENTIFIERS;
 use crate::WORKSPACE_RULES;
-use applications_configuration::SETTINGS_BY_APP;
+use crate::top_bar::TopBarConfig;
+use crate::popup::PopupsConfig;
+use crate::applications_configuration::SETTINGS_BY_APP;
 use color_eyre::Result;
 use crossbeam_channel::Receiver;
 use hotwatch::notify::DebouncedEvent;
@@ -72,12 +75,8 @@ use std::sync::Arc;
 use uds_windows::UnixListener;
 use uds_windows::UnixStream;
 
-use self::top_bar::TopBarConfig;
-
-pub trait KomorebiConfig
-where
-    Self: Default,
-{
+pub trait KomorebiConfig {
+    fn clone_globals() -> Self;
     fn apply_to_globals(&self) -> Result<()>;
 }
 
@@ -354,6 +353,9 @@ pub struct StaticConfig {
     /// Top bar configurations
     #[serde(skip_serializing_if = "Option::is_none")]
     pub top_bar: Option<TopBarConfig>,
+    /// Popups configurations
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub popups: Option<PopupsConfig>,
     /// Set categories stackin behavior.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub auto_stack_by_category: Option<bool>,
@@ -488,7 +490,8 @@ impl From<&WindowManager> for StaticConfig {
             object_name_change_applications: None,
             monitor_index_preferences: Option::from(MONITOR_INDEX_PREFERENCES.lock().clone()),
             display_index_preferences: Option::from(DISPLAY_INDEX_PREFERENCES.lock().clone()),
-            top_bar: Option::from(TopBarConfig::default()),
+            top_bar: Option::from(TopBarConfig::clone_globals()),
+            popups: Option::from(PopupsConfig::clone_globals()),
             auto_stack_by_category: None,
         }
     }
@@ -524,6 +527,10 @@ impl StaticConfig {
     fn apply_globals(&mut self) -> Result<()> {
         if let Some(top_bar) = &self.top_bar {
             top_bar.apply_to_globals()?;
+        }
+
+        if let Some(popups) = &self.popups {
+            popups.apply_to_globals()?;
         }
 
         if let Some(auto_stack_by_category) = self.auto_stack_by_category {
@@ -669,7 +676,7 @@ impl StaticConfig {
 
             for mut entry in asc {
                 drop(regex_identifiers);
-                SETTINGS_BY_APP.lock().add(entry.clone().into());               
+                SETTINGS_BY_APP.lock().add(entry.clone().into());
                 regex_identifiers = REGEX_IDENTIFIERS.lock();
 
                 // Todo remove all these
@@ -953,7 +960,7 @@ impl StaticConfig {
             }
         }
 
-        wm.enforce_workspace_rules()?;
+        let _ = wm.enforce_workspace_rules();
 
         if value.active_window_border == Some(true) {
             if BORDER_HWND.load(Ordering::SeqCst) == 0 {

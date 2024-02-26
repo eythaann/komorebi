@@ -44,6 +44,7 @@ use windows::Win32::Graphics::Gdi::HBRUSH;
 use windows::Win32::Graphics::Gdi::HDC;
 use windows::Win32::Graphics::Gdi::HMONITOR;
 use windows::Win32::Graphics::Gdi::MONITORENUMPROC;
+use windows::Win32::Graphics::Gdi::MONITORINFO;
 use windows::Win32::Graphics::Gdi::MONITORINFOEXW;
 use windows::Win32::Graphics::Gdi::MONITOR_DEFAULTTONEAREST;
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
@@ -342,6 +343,15 @@ impl WindowsApi {
         // MONITOR_DEFAULTTONEAREST ensures that the return value will never be NULL
         // https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-monitorfromwindow
         unsafe { MonitorFromPoint(point, MONITOR_DEFAULTTONEAREST) }.0
+    }
+
+    pub fn get_monitor_info_from_cursor() -> Result<MONITORINFO> {    
+        let hmonitor = HMONITOR(Self::monitor_from_point(Self::cursor_pos()?));
+        let mut monitor_info: MONITORINFO = Default::default();
+        unsafe {
+            GetMonitorInfoW(hmonitor, &mut monitor_info);
+        }
+        Ok(monitor_info)
     }
 
     pub fn position_window(hwnd: HWND, layout: &Rect, top: bool) -> Result<()> {

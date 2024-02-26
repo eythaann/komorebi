@@ -920,17 +920,21 @@ impl WindowManager {
                     }
                 }
             }
-        }
-
-        // if we passed false for follow_focus
-        if !follow_focus
-            && self.focused_container_mut()?.windows().len() > 1
-            && self.focused_workspace()?.monocle_container().is_none()
-        {
-            if let Ok(window) = self.focused_window_mut() {
-                window.focus(self.mouse_follows_focus)?;
+        } else {
+            // if we passed false for follow_focus
+            match self.focused_container() {
+                Ok(focused_container) => {
+                    if focused_container.windows().len() > 1
+                        && self.focused_workspace()?.monocle_container().is_none()
+                    {
+                        if let Ok(window) = self.focused_window_mut() {
+                            window.focus(self.mouse_follows_focus)?;
+                        }
+                    }
+                }
+                Err(_) => {}
             }
-        };
+        }
 
         Ok(())
     }
@@ -2272,6 +2276,13 @@ impl WindowManager {
             .get(idx)
             .ok_or_else(|| anyhow!("there is no monitor at this index"))?
             .focused_workspace_idx())
+    }
+
+    pub fn workspace_name(&self, monitor_idx: usize, workspace_idx: usize) -> Option<String> {
+        self.monitors()
+            .get(monitor_idx)
+            .and_then(|m| m.workspaces().get(workspace_idx))
+            .and_then(|w| w.name().clone())
     }
 
     pub fn focused_workspace_for_monitor_idx(&self, idx: usize) -> Result<&Workspace> {

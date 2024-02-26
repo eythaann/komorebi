@@ -274,6 +274,51 @@
         }
       }
     },
+    "popups": {
+      "description": "Configurations for popups",
+      "type": "object",
+      "properties": {
+        "enable": {
+          "description": "Enable or disable the popups",
+          "type": "boolean",
+          "default": true
+        },
+        "x": {
+          "description": "X-coordinate position",
+          "type": "integer",
+          "default": "center"
+        },
+        "y": {
+          "description": "Y-coordinate position",
+          "type": "integer",
+          "default": "center"
+        },
+        "height": {
+          "description": "Height of the popup",
+          "type": "integer"
+        },
+        "width": {
+          "description": "Width of the popup",
+          "type": "integer"
+        },
+        "text_color": {
+          "description": "Text color",
+          "$ref": "#/definitions/HexColor"
+        },
+        "border_color": {
+          "description": "Border color",
+          "$ref": "#/definitions/HexColor"
+        },
+        "border_width": {
+          "description": "Border width",
+          "type": "integer"
+        },
+        "background": {
+          "description": "Background color",
+          "$ref": "#/definitions/HexColor"
+        }
+      }
+    },
     "tray_and_multi_window_applications": {
       "description": "Identify tray and multi-window applications",
       "type": [

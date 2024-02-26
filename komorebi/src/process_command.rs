@@ -38,6 +38,7 @@ use komorebi_core::WindowKind;
 
 use crate::border::Border;
 use crate::current_virtual_desktop;
+use crate::gui_library::show_message;
 use crate::notify_subscribers;
 use crate::static_config::StaticConfig;
 use crate::window::Window;
@@ -397,11 +398,13 @@ impl WindowManager {
                 self.adjust_workspace_padding(sizing, adjustment)?;
             }
             SocketMessage::MoveContainerToWorkspaceNumber(workspace_idx) => {
-                self.move_focused_container(
-                    self.focused_monitor_idx(),
-                    Option::from(workspace_idx),
-                    true,
-                )?;
+                let monitor_idx = self.focused_monitor_idx();
+                if let Some(name) = self.workspace_name(monitor_idx, workspace_idx) {
+                    show_message(&format!("Moving to {}", name))?;
+                } else {
+                    show_message(&format!("Moving to Workspace {}", workspace_idx + 1))?;
+                }
+                self.move_focused_container(monitor_idx, Option::from(workspace_idx), true)?;
             }
             SocketMessage::CycleMoveContainerToWorkspace(direction) => {
                 let focused_monitor = self
@@ -424,6 +427,7 @@ impl WindowManager {
                 )?;
             }
             SocketMessage::MoveContainerToMonitorNumber(monitor_idx) => {
+                show_message(&format!("Moving to Monitor {}", monitor_idx + 1))?;
                 self.move_focused_container(monitor_idx, None, true)?;
             }
             SocketMessage::SwapWorkspacesToMonitorNumber(monitor_idx) => {
@@ -439,11 +443,13 @@ impl WindowManager {
                 self.move_focused_container(monitor_idx, None, true)?;
             }
             SocketMessage::SendContainerToWorkspaceNumber(workspace_idx) => {
-                self.move_focused_container(
-                    self.focused_monitor_idx(),
-                    Option::from(workspace_idx),
-                    false,
-                )?;
+                let monitor_idx = self.focused_monitor_idx();
+                self.move_focused_container(monitor_idx, Option::from(workspace_idx), false)?;
+                if let Some(name) = self.workspace_name(monitor_idx, workspace_idx) {
+                    show_message(&format!("Sent to {}", name))?;
+                } else {
+                    show_message(&format!("Sent to Workspace {}", workspace_idx + 1))?;
+                }
             }
             SocketMessage::CycleSendContainerToWorkspace(direction) => {
                 let focused_monitor = self
@@ -467,6 +473,7 @@ impl WindowManager {
             }
             SocketMessage::SendContainerToMonitorNumber(monitor_idx) => {
                 self.move_focused_container(monitor_idx, None, false)?;
+                show_message(&format!("Sent to Monitor {}", monitor_idx + 1))?;
             }
             SocketMessage::CycleSendContainerToMonitor(direction) => {
                 let monitor_idx = direction.next_idx(
@@ -479,34 +486,44 @@ impl WindowManager {
             }
             SocketMessage::SendContainerToMonitorWorkspaceNumber(monitor_idx, workspace_idx) => {
                 self.move_focused_container(monitor_idx, Option::from(workspace_idx), false)?;
+                if let Some(name) = self.workspace_name(monitor_idx, workspace_idx) {
+                    show_message(&format!("Sent to {}", name))?;
+                } else {
+                    show_message(&format!(
+                        "Sent to Monitor {}, {}",
+                        monitor_idx + 1,
+                        workspace_idx + 1
+                    ))?;
+                }
             }
             SocketMessage::SendContainerToNamedWorkspace(ref workspace) => {
                 if let Some((monitor_idx, workspace_idx)) =
                     self.monitor_workspace_index_by_name(workspace)
                 {
-                    self.move_focused_container(
-                        monitor_idx,
-                        Option::from(workspace_idx),
-                        false,
-                    )?;
+                    self.move_focused_container(monitor_idx, Option::from(workspace_idx), false)?;
+                    show_message(&format!("Sent to {}", workspace))?;
                 }
             }
             SocketMessage::MoveContainerToNamedWorkspace(ref workspace) => {
                 if let Some((monitor_idx, workspace_idx)) =
                     self.monitor_workspace_index_by_name(workspace)
                 {
+                    show_message(&format!("Moving to {}", workspace))?;
                     self.move_focused_container(monitor_idx, Option::from(workspace_idx), true)?;
                 }
             }
 
             SocketMessage::MoveWorkspaceToMonitorNumber(monitor_idx) => {
+                show_message(&format!("Moving to Monitor {}", monitor_idx + 1))?;
                 self.move_workspace_to_monitor(monitor_idx)?;
             }
             SocketMessage::TogglePause => {
                 if self.is_paused {
                     tracing::info!("resuming");
+                    show_message("Resuming")?;
                 } else {
                     tracing::info!("pausing");
+                    show_message("pausing")?;
                 }
 
                 self.is_paused = !self.is_paused;
@@ -521,11 +538,12 @@ impl WindowManager {
                     NonZeroUsize::new(self.monitors().len())
                         .ok_or_else(|| anyhow!("there must be at least one monitor"))?,
                 );
-
+                show_message(&format!("Focusing Monitor {}", monitor_idx + 1))?;
                 self.focus_monitor(monitor_idx)?;
                 self.update_focused_workspace(self.mouse_follows_focus)?;
             }
             SocketMessage::FocusMonitorNumber(monitor_idx) => {
+                show_message(&format!("Focusing Monitor {}", monitor_idx + 1))?;
                 self.focus_monitor(monitor_idx)?;
                 self.update_focused_workspace(self.mouse_follows_focus)?;
             }
@@ -690,6 +708,11 @@ impl WindowManager {
                 // the workspace switch op
                 if let Some(monitor_idx) = self.monitor_idx_from_current_pos() {
                     self.focus_monitor(monitor_idx)?;
+                    if let Some(name) = self.workspace_name(monitor_idx, workspace_idx) {
+                        show_message(&format!("Focusing {}", name))?;
+                    } else {
+                        show_message(&format!("Focusing Workspace {}", workspace_idx + 1))?;
+                    }
                 }
 
                 self.focus_workspace(workspace_idx)?;
@@ -722,10 +745,20 @@ impl WindowManager {
                 };
             }
             SocketMessage::FocusMonitorWorkspaceNumber(monitor_idx, workspace_idx) => {
+                if let Some(name) = self.workspace_name(monitor_idx, workspace_idx) {
+                    show_message(&format!("Focusing {}", name))?;
+                } else {
+                    show_message(&format!(
+                        "Focusing Monitor {}, {}",
+                        monitor_idx + 1,
+                        workspace_idx + 1
+                    ))?;
+                }
                 self.focus_monitor(monitor_idx)?;
                 self.focus_workspace(workspace_idx)?;
             }
             SocketMessage::FocusNamedWorkspace(ref name) => {
+                show_message(&format!("Focusing {}", name))?;
                 if let Some((monitor_idx, workspace_idx)) =
                     self.monitor_workspace_index_by_name(name)
                 {
