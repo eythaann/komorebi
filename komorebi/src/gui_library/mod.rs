@@ -98,7 +98,7 @@ impl Popup {
                     .lock()
                     .or_else(|| Some((screen_width - width) / 2))
                     .unwrap();
-                let y = popup::POS_X
+                let y = popup::POS_Y
                     .lock()
                     .or_else(|| Some((screen_height - height) / 2))
                     .unwrap();
