@@ -285,13 +285,17 @@
         },
         "x": {
           "description": "X-coordinate position",
-          "type": "integer",
-          "default": "center"
+          "type": [
+            "integer",
+            "null"
+          ]
         },
         "y": {
           "description": "Y-coordinate position",
-          "type": "integer",
-          "default": "center"
+          "type": [
+            "integer",
+            "null"
+          ]
         },
         "height": {
           "description": "Height of the popup",
