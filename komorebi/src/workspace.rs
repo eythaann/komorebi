@@ -710,8 +710,9 @@ impl Workspace {
             .ok_or_else(|| anyhow!("there is no floating window"))?;
 
         if *STACK_BY_CATEGORY.lock() {
-            if let Some(container) = self.get_container_by_category(window) {
+            if let Some((idx, container)) = self.get_container_by_category(window) {
                 container.add_window(window);
+                self.focus_container(idx);
                 return Ok(());
             }
         }
@@ -725,11 +726,11 @@ impl Workspace {
         Ok(())
     }
 
-    pub fn get_container_by_category(&mut self, window: Window) -> Option<&mut Container> {
+    pub fn get_container_by_category(&mut self, window: Window) -> Option<(usize, &mut Container)> {
         if let Some(category) = window.category() {
-            for container in self.containers_mut() {
+            for (idx, container) in self.containers_mut().iter_mut().enumerate() {
                 if container.categories().iter().any(|s| s.eq(&category)) {
-                    return Option::from(container);
+                    return Option::from((idx, container));
                 }
             }
         }
@@ -738,8 +739,9 @@ impl Workspace {
 
     pub fn new_container_for_window(&mut self, window: Window) {
         if *STACK_BY_CATEGORY.lock() {
-            if let Some(container) = self.get_container_by_category(window) {
+            if let Some((idx, container)) = self.get_container_by_category(window) {
                 container.add_window(window);
+                self.focus_container(idx);
                 return;
             }
         }
