@@ -120,10 +120,12 @@ impl Border {
             let title = &window.title()?;
             let exe_name = &window.exe()?;
             let class = &window.class()?;
+            let path = &window.path()?;
 
             let should_expand_border = should_act(
                 title,
                 exe_name,
+                path,
                 class,
                 &border_overflows,
                 &regex_identifiers,

@@ -421,6 +421,7 @@
     "ApplicationIdentifier": {
       "type": "string",
       "enum": [
+        "Path",
         "Exe",
         "Class",
         "Title"

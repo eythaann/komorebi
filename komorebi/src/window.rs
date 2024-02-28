@@ -461,6 +461,14 @@ impl Window {
         WindowsApi::window_text_w(self.hwnd())
     }
 
+    pub fn path(self) -> Result<String> {
+        let (process_id, _) = WindowsApi::window_thread_process_id(self.hwnd());
+        let handle = WindowsApi::process_handle(process_id)?;
+        let path = WindowsApi::exe_path(handle);
+        WindowsApi::close_process(handle)?;
+        path
+    }
+
     pub fn exe(self) -> Result<String> {
         let (process_id, _) = WindowsApi::window_thread_process_id(self.hwnd());
         let handle = WindowsApi::process_handle(process_id)?;
@@ -524,8 +532,8 @@ impl Window {
             (true, _) |
             // If not allowing cloaked windows, we need to ensure the window is not cloaked
             (false, false) => {
-                if let (Ok(title), Ok(exe_name), Ok(class)) = (self.title(), self.exe(), self.class()) {
-                    return Ok(window_is_eligible(&title, &exe_name, &class, &self.style()?, &self.ex_style()?, event));
+                if let (Ok(title), Ok(exe_name), Ok(class), Ok(path)) = (self.title(), self.exe(), self.class(), self.path()) {
+                    return Ok(window_is_eligible(&title, &exe_name, &class, &path, &self.style()?, &self.ex_style()?, event));
                 }
             }
             _ => {}
@@ -535,9 +543,9 @@ impl Window {
     }
 
     pub fn should_float(self) -> bool {
-        if let (Ok(title), Ok(exe_name), Ok(class)) = (self.title(), self.exe(), self.class()) {
+        if let (Ok(title), Ok(exe_name), Ok(class), Ok(path)) = (self.title(), self.exe(), self.class(), self.path()) {
             let _should_act = |identifiers: &[IdWithIdentifier]| -> bool {
-                should_act(&title, &exe_name, &class, identifiers, &REGEX_IDENTIFIERS.lock())
+                should_act(&title, &exe_name, &class, &path, identifiers, &REGEX_IDENTIFIERS.lock())
             };
             let should_float = _should_act(&FLOAT_IDENTIFIERS.lock());
             let is_forced = _should_act(&MANAGE_IDENTIFIERS.lock());
@@ -552,6 +560,7 @@ fn window_is_eligible(
     title: &String,
     exe_name: &String,
     class: &String,
+    path: &String,
     style: &WindowStyle,
     ex_style: &ExtendedWindowStyle,
     event: Option<WindowManagerEvent>,
@@ -566,7 +575,7 @@ fn window_is_eligible(
     let regex_identifiers = REGEX_IDENTIFIERS.lock();
 
     let _should_act = |identifiers: &[IdWithIdentifier]| -> bool {
-        should_act(title, exe_name, class, identifiers, &regex_identifiers)
+        should_act(title, exe_name, class, path, identifiers, &regex_identifiers)
     };
 
     let should_not_manage = _should_act(&UNMANAGE_IDENTIFIERS.lock());
@@ -613,6 +622,7 @@ pub fn should_act(
     title: &str,
     exe_name: &str,
     class: &str,
+    path: &str,
     identifiers: &[IdWithIdentifier],
     regex_identifiers: &HashMap<String, Regex>,
 ) -> bool {
@@ -638,6 +648,11 @@ pub fn should_act(
                         should_act = true;
                     }
                 }
+                ApplicationIdentifier::Path => {
+                    if path.eq(&identifier.id) {
+                        should_act = true;
+                    }
+                }
             },
             Some(MatchingStrategy::Equals) => match identifier.kind {
                 ApplicationIdentifier::Title => {
@@ -652,6 +667,11 @@ pub fn should_act(
                 }
                 ApplicationIdentifier::Exe => {
                     if exe_name.eq(&identifier.id) {
+                        should_act = true;
+                    }
+                }
+                ApplicationIdentifier::Path => {
+                    if path.eq(&identifier.id) {
                         should_act = true;
                     }
                 }
@@ -672,6 +692,11 @@ pub fn should_act(
                         should_act = true;
                     }
                 }
+                ApplicationIdentifier::Path => {
+                    if path.starts_with(&identifier.id) {
+                        should_act = true;
+                    }
+                }
             },
             Some(MatchingStrategy::EndsWith) => match identifier.kind {
                 ApplicationIdentifier::Title => {
@@ -689,6 +714,11 @@ pub fn should_act(
                         should_act = true;
                     }
                 }
+                ApplicationIdentifier::Path => {
+                    if path.ends_with(&identifier.id) {
+                        should_act = true;
+                    }
+                }
             },
             Some(MatchingStrategy::Contains) => match identifier.kind {
                 ApplicationIdentifier::Title => {
@@ -703,6 +733,11 @@ pub fn should_act(
                 }
                 ApplicationIdentifier::Exe => {
                     if exe_name.contains(&identifier.id) {
+                        should_act = true;
+                    }
+                }
+                ApplicationIdentifier::Path => {
+                    if path.contains(&identifier.id) {
                         should_act = true;
                     }
                 }
@@ -725,6 +760,13 @@ pub fn should_act(
                 ApplicationIdentifier::Exe => {
                     if let Some(re) = regex_identifiers.get(&identifier.id) {
                         if re.is_match(exe_name) {
+                            should_act = true;
+                        }
+                    }
+                }
+                ApplicationIdentifier::Path => {
+                    if let Some(re) = regex_identifiers.get(&identifier.id) {
+                        if re.is_match(path) {
                             should_act = true;
                         }
                     }

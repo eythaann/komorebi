@@ -224,6 +224,8 @@ pub enum ApplicationIdentifier {
     Class,
     #[serde(alias = "title")]
     Title,
+    #[serde(alias = "path")]
+    Path,
 }
 
 #[derive(

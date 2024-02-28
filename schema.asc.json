@@ -65,7 +65,8 @@
       "enum": [
         "Exe",
         "Class",
-        "Title"
+        "Title",
+        "Path"
       ]
     },
     "ApplicationOptions": {

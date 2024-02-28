@@ -58,7 +58,7 @@ impl AppIdentifier {
         }
     }
 
-    pub fn validate(&self, title: &str, class: &str, exe: &str) -> bool {
+    pub fn validate(&self, title: &str, class: &str, exe: &str, path: &str) -> bool {
         match self.matching_strategy {
             MatchingStrategy::Legacy => match self.kind {
                 ApplicationIdentifier::Title => {
@@ -68,26 +68,31 @@ impl AppIdentifier {
                     class.starts_with(&self.id) || class.ends_with(&self.id)
                 }
                 ApplicationIdentifier::Exe => exe.eq(&self.id),
+                ApplicationIdentifier::Path => path.eq(&self.id),
             },
             MatchingStrategy::Equals => match self.kind {
                 ApplicationIdentifier::Title => title.eq(&self.id),
                 ApplicationIdentifier::Class => class.eq(&self.id),
                 ApplicationIdentifier::Exe => exe.eq(&self.id),
+                ApplicationIdentifier::Path => path.eq(&self.id),
             },
             MatchingStrategy::StartsWith => match self.kind {
                 ApplicationIdentifier::Title => title.starts_with(&self.id),
                 ApplicationIdentifier::Class => class.starts_with(&self.id),
                 ApplicationIdentifier::Exe => exe.starts_with(&self.id),
+                ApplicationIdentifier::Path => path.starts_with(&self.id),
             },
             MatchingStrategy::EndsWith => match self.kind {
                 ApplicationIdentifier::Title => title.ends_with(&self.id),
                 ApplicationIdentifier::Class => class.ends_with(&self.id),
                 ApplicationIdentifier::Exe => exe.ends_with(&self.id),
+                ApplicationIdentifier::Path => path.ends_with(&self.id),
             },
             MatchingStrategy::Contains => match self.kind {
                 ApplicationIdentifier::Title => title.contains(&self.id),
                 ApplicationIdentifier::Class => class.contains(&self.id),
                 ApplicationIdentifier::Exe => exe.contains(&self.id),
+                ApplicationIdentifier::Path => path.contains(&self.id),
             },
             MatchingStrategy::Regex => {
                 let regex_identifiers = REGEX_IDENTIFIERS.lock();
@@ -96,6 +101,7 @@ impl AppIdentifier {
                         ApplicationIdentifier::Title => re.is_match(title),
                         ApplicationIdentifier::Class => re.is_match(class),
                         ApplicationIdentifier::Exe => re.is_match(exe),
+                        ApplicationIdentifier::Path => re.is_match(path),
                     };
                 }
                 false
@@ -140,8 +146,8 @@ impl From<ApplicationConfiguration> for AppConfig {
 
 impl AppConfig {
     pub fn match_window(&self, window: &Window) -> bool {
-        if let (Ok(title), Ok(exe), Ok(class)) = (window.title(), window.exe(), window.class()) {
-            return self.identifier.validate(&title, &class, &exe);
+        if let (Ok(title), Ok(exe), Ok(class), Ok(path)) = (window.title(), window.exe(), window.class(), window.path()) {
+            return self.identifier.validate(&title, &class, &exe, &path);
         }
         false
     }
