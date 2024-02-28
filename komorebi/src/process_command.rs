@@ -250,22 +250,26 @@ impl WindowManager {
                 }
             }
             SocketMessage::InitialWorkspaceRule(_, ref id, monitor_idx, workspace_idx) => {
+                // TODO (eythan)
                 self.handle_initial_workspace_rules(id, monitor_idx, workspace_idx)?;
             }
             SocketMessage::InitialNamedWorkspaceRule(_, ref id, ref workspace) => {
                 if let Some((monitor_idx, workspace_idx)) =
-                    self.monitor_workspace_index_by_name(workspace)
+                self.monitor_workspace_index_by_name(workspace)
                 {
+                    // TODO (eythan)
                     self.handle_initial_workspace_rules(id, monitor_idx, workspace_idx)?;
                 }
             }
             SocketMessage::WorkspaceRule(_, ref id, monitor_idx, workspace_idx) => {
+                // TODO (eythan)
                 self.handle_definitive_workspace_rules(id, monitor_idx, workspace_idx)?;
             }
             SocketMessage::NamedWorkspaceRule(_, ref id, ref workspace) => {
                 if let Some((monitor_idx, workspace_idx)) =
-                    self.monitor_workspace_index_by_name(workspace)
+                self.monitor_workspace_index_by_name(workspace)
                 {
+                    // TODO (eythan)
                     self.handle_definitive_workspace_rules(id, monitor_idx, workspace_idx)?;
                 }
             }

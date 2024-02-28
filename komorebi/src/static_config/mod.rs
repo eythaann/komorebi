@@ -943,20 +943,6 @@ impl StaticConfig {
                         )?;
                     }
                 }
-
-                for (j, ws) in monitor.workspaces.iter().enumerate() {
-                    if let Some(rules) = &ws.workspace_rules {
-                        for r in rules {
-                            wm.handle_workspace_rules(&r.id, i, j, false)?;
-                        }
-                    }
-
-                    if let Some(rules) = &ws.initial_workspace_rules {
-                        for r in rules {
-                            wm.handle_workspace_rules(&r.id, i, j, true)?;
-                        }
-                    }
-                }
             }
         }
 
@@ -993,20 +979,6 @@ impl StaticConfig {
                                 .get(j)
                                 .expect("no static workspace config"),
                         )?;
-                    }
-                }
-
-                for (j, ws) in monitor.workspaces.iter().enumerate() {
-                    if let Some(rules) = &ws.workspace_rules {
-                        for r in rules {
-                            wm.handle_workspace_rules(&r.id, i, j, false)?;
-                        }
-                    }
-
-                    if let Some(rules) = &ws.initial_workspace_rules {
-                        for r in rules {
-                            wm.handle_workspace_rules(&r.id, i, j, true)?;
-                        }
                     }
                 }
             }

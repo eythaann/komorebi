@@ -135,8 +135,6 @@ impl WindowManager {
             }
         }
 
-        self.enforce_workspace_rules()?;
-
         match event {
             WindowManagerEvent::ForceUpdate(_) => {
                 self.update_focused_workspace(true)?;
@@ -308,7 +306,7 @@ impl WindowManager {
                                 window.center(&work_area, &invisible_borders)?;
                                 window.focus(self.mouse_follows_focus)?;
                             } else {
-                                workspace.new_container_for_window(*window);
+                                workspace.new_container_for_window(*window)?;
                             }
                             self.update_focused_workspace(false)?;
                         }
@@ -320,6 +318,7 @@ impl WindowManager {
                             self.update_focused_workspace(true)?;
                         }
                     }
+                    self.enforce_workspace_rules()?;
                 }
             }
             WindowManagerEvent::MoveResizeStart(_, window) => {

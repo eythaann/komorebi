@@ -702,7 +702,7 @@ impl Workspace {
             container.load_focused_window()?;
         }
 
-        self.new_container_for_window(window);
+        self.new_container_for_window(window)?;
         Ok(())
     }
 
@@ -714,6 +714,7 @@ impl Workspace {
         if *STACK_BY_CATEGORY.lock() {
             if let Some((idx, container)) = self.get_container_by_category(window) {
                 container.add_window(window);
+                container.load_focused_window()?;
                 self.focus_container(idx);
                 return Ok(());
             }
@@ -739,12 +740,13 @@ impl Workspace {
         None
     }
 
-    pub fn new_container_for_window(&mut self, window: Window) {
+    pub fn new_container_for_window(&mut self, window: Window) -> Result<()> {
         if *STACK_BY_CATEGORY.lock() {
             if let Some((idx, container)) = self.get_container_by_category(window) {
                 container.add_window(window);
+                container.load_focused_window()?;
                 self.focus_container(idx);
-                return;
+                return Ok(());
             }
         }
 
@@ -770,6 +772,7 @@ impl Workspace {
         }
 
         self.focus_container(next_idx);
+        Ok(())
     }
 
     pub fn float_focused_window(&mut self) -> Result<()> {

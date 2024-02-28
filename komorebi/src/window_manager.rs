@@ -62,7 +62,6 @@ use crate::OBJECT_NAME_CHANGE_ON_LAUNCH;
 use crate::REMOVE_TITLEBARS;
 use crate::TRAY_AND_MULTI_WINDOW_IDENTIFIERS;
 use crate::UNMANAGE_IDENTIFIERS;
-use crate::WORKSPACE_RULES;
 
 #[derive(Debug)]
 pub struct WindowManager {
@@ -519,41 +518,6 @@ impl WindowManager {
         });
     }
 
-    fn add_window_handle_to_move_based_on_workspace_rule(
-        &self,
-        window: &Window,
-        origin_monitor_idx: usize,
-        origin_workspace_idx: usize,
-        to_move: &mut Vec<EnforceWorkspaceRuleOp>,
-    ) -> Result<()> {
-        let workspace_rules = WORKSPACE_RULES.lock();
-        let mut already_moved_window_handles = self.already_moved_window_handles.lock();
-        let mut found_workspace_rule = workspace_rules.get(&window.exe()?);
-
-        if found_workspace_rule.is_none() {
-            found_workspace_rule = workspace_rules.get(&window.title()?);
-        }
-
-        // If the executable names or titles of any of those windows are in our rules map
-        if let Some((monitor_idx, workspace_idx, apply_on_first_show_only)) = found_workspace_rule {
-            if !*apply_on_first_show_only || !already_moved_window_handles.contains(&window.hwnd) {
-                if *apply_on_first_show_only {
-                    already_moved_window_handles.insert(window.hwnd);
-                }
-                self.add_window_handle_to_move(
-                    &window.title()?,
-                    window.hwnd,
-                    origin_monitor_idx,
-                    origin_workspace_idx,
-                    *monitor_idx,
-                    *workspace_idx,
-                    to_move,
-                );
-            }
-        }
-        Ok(())
-    }
-
     #[tracing::instrument(skip(self))]
     pub fn enforce_workspace_rules(&mut self) -> Result<()> {
         let mut to_move: Vec<EnforceWorkspaceRuleOp> = vec![];
@@ -612,14 +576,6 @@ impl WindowManager {
                             }
                         }
                     }
-
-                    // wil do nothing, todo remove it
-                    self.add_window_handle_to_move_based_on_workspace_rule(
-                        window,
-                        origin_monitor_idx,
-                        origin_workspace_idx,
-                        &mut to_move,
-                    )?
                 }
             }
         }
@@ -680,7 +636,7 @@ impl WindowManager {
                 target_workspace.floating_windows_mut().push(window);
                 window.center(&work_area, &invisible_borders)?;
             } else {
-                target_workspace.new_container_for_window(window);
+                target_workspace.new_container_for_window(window)?;
             }
         }
 
