@@ -207,7 +207,9 @@ impl Workspace {
         }
 
         if let Some(container) = self.focused_container_mut() {
-            container.focus_window(container.focused_window_idx());
+            if let Some(window) = container.windows().get(container.focused_window_idx()) {
+                window.focus(mouse_follows_focus)?;
+            }
         }
 
         Ok(())
