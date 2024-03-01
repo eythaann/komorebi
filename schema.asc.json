@@ -46,6 +46,13 @@
             "number"
           ]
         },
+        "template": {
+          "description": "Means that the app is part of the official bundle of apps configurations included in the build",
+          "type": [
+            "null",
+            "boolean"
+          ]
+        },
         "options": {
           "type": [
             "array",
