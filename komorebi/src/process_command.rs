@@ -547,12 +547,12 @@ impl WindowManager {
                     NonZeroUsize::new(self.monitors().len())
                         .ok_or_else(|| anyhow!("there must be at least one monitor"))?,
                 );
-                show_message(&format!("Focusing Monitor {}", monitor_idx + 1))?;
+                show_message(&format!("Monitor {}", monitor_idx + 1))?;
                 self.focus_monitor(monitor_idx)?;
                 self.update_focused_workspace(self.mouse_follows_focus)?;
             }
             SocketMessage::FocusMonitorNumber(monitor_idx) => {
-                show_message(&format!("Focusing Monitor {}", monitor_idx + 1))?;
+                show_message(&format!("Monitor {}", monitor_idx + 1))?;
                 self.focus_monitor(monitor_idx)?;
                 self.update_focused_workspace(self.mouse_follows_focus)?;
             }
@@ -718,9 +718,9 @@ impl WindowManager {
                 if let Some(monitor_idx) = self.monitor_idx_from_current_pos() {
                     self.focus_monitor(monitor_idx)?;
                     if let Some(name) = self.workspace_name(monitor_idx, workspace_idx) {
-                        show_message(&format!("Focusing {}", name))?;
+                        show_message(&format!("{}", name))?;
                     } else {
-                        show_message(&format!("Focusing Workspace {}", workspace_idx + 1))?;
+                        show_message(&format!("Workspace {}", workspace_idx + 1))?;
                     }
                 }
 
@@ -755,10 +755,10 @@ impl WindowManager {
             }
             SocketMessage::FocusMonitorWorkspaceNumber(monitor_idx, workspace_idx) => {
                 if let Some(name) = self.workspace_name(monitor_idx, workspace_idx) {
-                    show_message(&format!("Focusing {}", name))?;
+                    show_message(&format!("{}", name))?;
                 } else {
                     show_message(&format!(
-                        "Focusing Monitor {}, {}",
+                        "Monitor {}, Workspace {}",
                         monitor_idx + 1,
                         workspace_idx + 1
                     ))?;
@@ -767,7 +767,7 @@ impl WindowManager {
                 self.focus_workspace(workspace_idx)?;
             }
             SocketMessage::FocusNamedWorkspace(ref name) => {
-                show_message(&format!("Focusing {}", name))?;
+                show_message(&format!("{}", name))?;
                 if let Some((monitor_idx, workspace_idx)) =
                     self.monitor_workspace_index_by_name(name)
                 {
