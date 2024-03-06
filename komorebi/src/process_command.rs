@@ -532,7 +532,7 @@ impl WindowManager {
                     show_message("Resuming")?;
                 } else {
                     tracing::info!("pausing");
-                    show_message("pausing")?;
+                    show_message("Pausing")?;
                 }
 
                 self.is_paused = !self.is_paused;
