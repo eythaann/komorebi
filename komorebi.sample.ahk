@@ -6,6 +6,9 @@
  * To read more about AHK see: https://www.autohotkey.com/docs/v2/misc/Remap.htm
  */
 
+; Open Settings
+#k::RunWait("komorebi-ui.exe")
+
 ; Focus windows
 !a::Focus("left")
 !s::Focus("down")
