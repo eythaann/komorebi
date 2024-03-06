@@ -64,6 +64,12 @@ use crate::REMOVE_TITLEBARS;
 use crate::TRAY_AND_MULTI_WINDOW_IDENTIFIERS;
 use crate::UNMANAGE_IDENTIFIERS;
 
+#[derive(Debug, Clone, Copy)]
+pub struct PendingMoveOperation {
+    pub from: (usize, usize, usize),
+    pub old_size: Rect,
+}
+
 #[derive(Debug)]
 pub struct WindowManager {
     pub monitors: Ring<Monitor>,
@@ -81,7 +87,7 @@ pub struct WindowManager {
     pub hotwatch: Hotwatch,
     pub virtual_desktop_id: Option<Vec<u8>>,
     pub has_pending_raise_op: bool,
-    pub pending_move_op: Option<(usize, usize, usize)>,
+    pub pending_move_op: Option<PendingMoveOperation>,
     pub already_moved_window_handles: Arc<Mutex<HashSet<isize>>>,
 }
 

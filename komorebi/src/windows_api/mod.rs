@@ -507,6 +507,13 @@ impl WindowsApi {
         Err(anyhow!("could not find next window"))
     }
 
+    pub fn legacy_window_rect(hwnd: HWND) -> Result<Rect> {
+        let mut rect = unsafe { std::mem::zeroed() };
+        unsafe { GetWindowRect(hwnd, &mut rect) }.process()?;
+        Ok(Rect::from(rect))
+    }
+
+
     pub fn window_rect(hwnd: HWND) -> Result<Rect> {
         let mut rect = unsafe { std::mem::zeroed() };
 
