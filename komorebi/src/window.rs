@@ -25,9 +25,6 @@ use serde::Deserialize;
 use serde::Serialize;
 use serde::Serializer;
 use windows::Win32::Foundation::HWND;
-use winput::press;
-use winput::release;
-use winput::Vk;
 
 use komorebi_core::ApplicationIdentifier;
 use komorebi_core::HidingBehaviour;
@@ -37,7 +34,6 @@ use crate::styles::ExtendedWindowStyle;
 use crate::styles::WindowStyle;
 use crate::window_manager_event::WindowManagerEvent;
 use crate::windows_api::WindowsApi;
-use crate::ALT_FOCUS_HACK;
 use crate::FLOAT_IDENTIFIERS;
 use crate::HIDDEN_HWNDS;
 use crate::MAXIMIZED_HWNDS;
@@ -151,7 +147,7 @@ impl Window {
         None
     }
 
-    pub fn center(&mut self, work_area: &Rect, invisible_borders: &Rect) -> Result<()> {
+    pub fn center(&mut self, work_area: &Rect) -> Result<()> {
         let half_width = work_area.right / 2;
         let half_weight = work_area.bottom / 2;
 
@@ -162,35 +158,12 @@ impl Window {
                 right: half_width,
                 bottom: half_weight,
             },
-            invisible_borders,
             true,
         )
     }
 
-    pub fn set_position(
-        &self,
-        layout: &Rect,
-        invisible_borders: &Rect, // Todo remove global invisible border as injection and border overflow option
-        top: bool,
-    ) -> Result<()> {
-        let mut rect = *layout;
-
-        let specifit_invisible_borders = self.config().and_then(|c| *c.invisible_borders());
-
-        if specifit_invisible_borders.is_none() {
-            rect.left -= invisible_borders.left;
-            rect.top -= invisible_borders.top;
-            rect.right += invisible_borders.right;
-            rect.bottom += invisible_borders.bottom;
-        }
-
-        if let Some(specifit_invisible_borders) = specifit_invisible_borders {
-            rect.left -= specifit_invisible_borders.left;
-            rect.top -= specifit_invisible_borders.top;
-            rect.right += specifit_invisible_borders.right;
-            rect.bottom += specifit_invisible_borders.bottom;
-        }
-
+    pub fn set_position(&self, layout: &Rect, top: bool) -> Result<()> {
+        let rect = *layout;
         WindowsApi::position_window(self.hwnd(), &rect, top)
     }
 
@@ -364,12 +337,7 @@ impl Window {
         let mut tried_resetting_foreground_access = false;
         let mut max_attempts = 10;
 
-        let hotkey_uses_alt = WindowsApi::alt_is_pressed();
         while !foregrounded && max_attempts > 0 {
-            if ALT_FOCUS_HACK.load(Ordering::SeqCst) {
-                press(Vk::Alt);
-            }
-
             match WindowsApi::set_foreground_window(self.hwnd()) {
                 Ok(()) => {
                     foregrounded = true;
@@ -390,10 +358,6 @@ impl Window {
                     }
                 }
             };
-
-            if ALT_FOCUS_HACK.load(Ordering::SeqCst) && !hotkey_uses_alt {
-                release(Vk::Alt);
-            }
         }
 
         // Center cursor in Window
@@ -610,8 +574,13 @@ fn window_is_eligible(
         || force_window_manage
     {
         return true;
-    } else if event.is_some() {
-        tracing::debug!("ignoring (exe: {}, title: {})", exe_name, title);
+    } else if let Some(event) = event {
+        tracing::debug!(
+            "ignoring (exe: {}, title: {}, event: {})",
+            exe_name,
+            title,
+            event
+        );
     }
 
     false

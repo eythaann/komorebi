@@ -73,6 +73,11 @@ jobs:
       - name: Install the target
         run: |
           rustup target install ${{ matrix.target }}
+      - name: Run Cargo checks
+        run: |
+          cargo fmt --check
+          cargo check
+          cargo clippy
       - name: Run a full build
         run: |
           cargo build --locked --release --target ${{ matrix.target }}
@@ -87,10 +92,17 @@ jobs:
           path: |
             target/${{ matrix.target }}/release/komorebi.exe
             target/${{ matrix.target }}/release/komorebic.exe
+            target/${{ matrix.target }}/release/komorebic-no-console.exe
             target/${{ matrix.target }}/release/komorebi.pdb
             target/${{ matrix.target }}/release/komorebic.pdb
+            target/${{ matrix.target }}/release/komorebic-no-console.pdb
             target/wix/komorebi-*.msi
           retention-days: 7
+      - name: Check GoReleaser
+        uses: goreleaser/goreleaser-action@v3
+        with:
+          version: latest
+          args: build --skip=validate --clean
 
       # Release
       - name: Generate changelog
@@ -104,7 +116,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         with:
           version: latest
-          args: release --skip-validate --clean --release-notes=CHANGELOG.md
+          args: release --skip=validate --clean --release-notes=CHANGELOG.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SCOOP_TOKEN: ${{ secrets.SCOOP_TOKEN }}

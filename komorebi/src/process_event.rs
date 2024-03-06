@@ -111,7 +111,6 @@ impl WindowManager {
             _ => {}
         }
 
-        let invisible_borders = self.invisible_borders;
         let offset = self.work_area_offset;
 
         for (i, monitor) in self.monitors_mut().iter_mut().enumerate() {
@@ -125,7 +124,7 @@ impl WindowManager {
             for (j, workspace) in monitor.workspaces_mut().iter_mut().enumerate() {
                 let reaped_orphans = workspace.reap_orphans()?;
                 if reaped_orphans.0 > 0 || reaped_orphans.1 > 0 {
-                    workspace.update(&work_area, offset, &invisible_borders)?;
+                    workspace.update(&work_area, offset)?;
                     tracing::info!(
                         "reaped {} orphan window(s) and {} orphaned container(s) on monitor: {}, workspace: {}",
                         reaped_orphans.0,
@@ -291,7 +290,6 @@ impl WindowManager {
                 }
 
                 let work_area = self.focused_monitor_work_area()?;
-                let invisible_borders = self.invisible_borders;
                 let behaviour = self.window_container_behaviour;
                 let workspace = self.focused_workspace_mut()?;
 
@@ -307,7 +305,7 @@ impl WindowManager {
                                 || workspace.get_window_to_be_maximized().is_some()
                             {
                                 workspace.floating_windows_mut().push(*window);
-                                window.center(&work_area, &invisible_borders)?;
+                                window.center(&work_area)?;
                                 window.focus(self.mouse_follows_focus)?;
                             } else {
                                 workspace.new_container_for_window(*window)?;
@@ -357,7 +355,6 @@ impl WindowManager {
                     .ok_or_else(|| anyhow!("cannot get monitor idx from current position"))?;
 
                 let new_window_behaviour = self.window_container_behaviour;
-                let invisible_borders = self.invisible_borders;
 
                 let workspace = self.focused_workspace_mut()?;
                 if !workspace
@@ -367,7 +364,7 @@ impl WindowManager {
                 {
                     let focused_container_idx = workspace.focused_container_idx();
 
-                    let mut new_position = WindowsApi::window_rect(window.hwnd())?;
+                    let new_position = WindowsApi::window_rect(window.hwnd())?;
 
                     let old_position = *workspace
                         .latest_layout()
@@ -391,12 +388,6 @@ impl WindowManager {
                             moved_across_monitors = origin_monitor_idx != target_monitor_idx;
                         }
                     }
-
-                    // Adjust for the invisible borders
-                    new_position.left += invisible_borders.left;
-                    new_position.top += invisible_borders.top;
-                    new_position.right -= invisible_borders.right;
-                    new_position.bottom -= invisible_borders.bottom;
 
                     let resize = Rect {
                         left: new_position.left - old_position.left,
@@ -506,17 +497,17 @@ impl WindowManager {
                         let mut ops = vec![];
 
                         macro_rules! resize_op {
-                        ($coordinate:expr, $comparator:tt, $direction:expr) => {{
-                            let adjusted = $coordinate * 2;
-                            let sizing = if adjusted $comparator 0 {
-                                Sizing::Decrease
-                            } else {
-                                Sizing::Increase
-                            };
+                            ($coordinate:expr, $comparator:tt, $direction:expr) => {{
+                                let adjusted = $coordinate * 2;
+                                let sizing = if adjusted $comparator 0 {
+                                    Sizing::Decrease
+                                } else {
+                                    Sizing::Increase
+                                };
 
-                            ($direction, sizing, adjusted.abs())
-                        }};
-                    }
+                                ($direction, sizing, adjusted.abs())
+                            }};
+                        }
 
                         if resize.left != 0 {
                             ops.push(resize_op!(resize.left, >, OperationDirection::Left));
@@ -526,11 +517,14 @@ impl WindowManager {
                             ops.push(resize_op!(resize.top, >, OperationDirection::Up));
                         }
 
-                        if resize.right != 0 && resize.left == 0 {
+                        let top_left_constant = BORDER_WIDTH.load(Ordering::SeqCst)
+                            + BORDER_OFFSET.load(Ordering::SeqCst);
+
+                        if resize.right != 0 && resize.left == top_left_constant {
                             ops.push(resize_op!(resize.right, <, OperationDirection::Right));
                         }
 
-                        if resize.bottom != 0 && resize.top == 0 {
+                        if resize.bottom != 0 && resize.top == top_left_constant {
                             ops.push(resize_op!(resize.bottom, <, OperationDirection::Down));
                         }
 
@@ -621,15 +615,10 @@ impl WindowManager {
                     }
 
                     if let Some(target_window) = target_window {
-                        let window = target_window;
-                        let mut rect = WindowsApi::window_rect(window.hwnd())?;
-                        rect.top -= self.invisible_borders.bottom;
-                        rect.bottom += self.invisible_borders.bottom;
-
                         let activate = BORDER_HIDDEN.load(Ordering::SeqCst);
 
                         WindowsApi::invalidate_border_rect()?;
-                        border.set_position(target_window, &self.invisible_borders, activate)?;
+                        border.set_position(target_window, activate)?;
 
                         if activate {
                             BORDER_HIDDEN.store(false, Ordering::SeqCst);
@@ -642,7 +631,7 @@ impl WindowManager {
 
         // If we unmanaged a window, it shouldn't be immediately hidden behind managed windows
         if let WindowManagerEvent::Unmanage(window) = event {
-            window.center(&self.focused_monitor_work_area()?, &invisible_borders)?;
+            window.center(&self.focused_monitor_work_area()?)?;
         }
 
         // If there are no more windows on the workspace, we shouldn't show the border window

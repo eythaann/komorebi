@@ -17,6 +17,7 @@ use color_eyre::Result;
 use miow::pipe::connect;
 use net2::TcpStreamExt;
 use parking_lot::Mutex;
+use schemars::gen::SchemaSettings;
 use schemars::schema_for;
 use uds_windows::UnixStream;
 
@@ -37,6 +38,7 @@ use komorebi_core::WindowContainerBehaviour;
 use komorebi_core::WindowKind;
 
 use crate::border::Border;
+use crate::colour::Rgb;
 use crate::current_virtual_desktop;
 use crate::gui_library::show_message;
 use crate::notify_subscribers;
@@ -47,7 +49,6 @@ use crate::window_manager::WindowManager;
 use crate::windows_api::WindowsApi;
 use crate::Notification;
 use crate::NotificationEvent;
-use crate::ALT_FOCUS_HACK;
 use crate::BORDER_COLOUR_CURRENT;
 use crate::BORDER_COLOUR_MONOCLE;
 use crate::BORDER_COLOUR_SINGLE;
@@ -327,7 +328,6 @@ impl WindowManager {
                     });
                 }
 
-                let invisible_borders = self.invisible_borders;
                 let offset = self.work_area_offset;
 
                 let mut hwnds_to_purge = vec![];
@@ -375,7 +375,7 @@ impl WindowManager {
                         .ok_or_else(|| anyhow!("there is no focused workspace"))?
                         .remove_window(hwnd)?;
 
-                    monitor.update_focused_workspace(offset, &invisible_borders)?;
+                    monitor.update_focused_workspace(offset)?;
                 }
             }
             SocketMessage::FocusedWorkspaceContainerPadding(adjustment) => {
@@ -1169,10 +1169,7 @@ impl WindowManager {
             SocketMessage::UnmanageFocusedWindow => {
                 self.unmanage_focused_window()?;
             }
-            SocketMessage::InvisibleBorders(rect) => {
-                self.invisible_borders = rect;
-                self.retile_all(false)?;
-            }
+            SocketMessage::InvisibleBorders(_rect) => {}
             SocketMessage::WorkAreaOffset(rect) => {
                 self.work_area_offset = Option::from(rect);
                 self.retile_all(false)?;
@@ -1310,14 +1307,14 @@ impl WindowManager {
             SocketMessage::ActiveWindowBorderColour(kind, r, g, b) => {
                 match kind {
                     WindowKind::Single => {
-                        BORDER_COLOUR_SINGLE.store(r | (g << 8) | (b << 16), Ordering::SeqCst);
-                        BORDER_COLOUR_CURRENT.store(r | (g << 8) | (b << 16), Ordering::SeqCst);
+                        BORDER_COLOUR_SINGLE.store(Rgb::new(r, g, b).into(), Ordering::SeqCst);
+                        BORDER_COLOUR_CURRENT.store(Rgb::new(r, g, b).into(), Ordering::SeqCst);
                     }
                     WindowKind::Stack => {
-                        BORDER_COLOUR_STACK.store(r | (g << 8) | (b << 16), Ordering::SeqCst);
+                        BORDER_COLOUR_STACK.store(Rgb::new(r, g, b).into(), Ordering::SeqCst);
                     }
                     WindowKind::Monocle => {
-                        BORDER_COLOUR_MONOCLE.store(r | (g << 8) | (b << 16), Ordering::SeqCst);
+                        BORDER_COLOUR_MONOCLE.store(Rgb::new(r, g, b).into(), Ordering::SeqCst);
                     }
                 }
 
@@ -1328,21 +1325,11 @@ impl WindowManager {
                 WindowsApi::invalidate_border_rect()?;
             }
             SocketMessage::ActiveWindowBorderOffset(offset) => {
-                let mut current_border_offset = BORDER_OFFSET.lock();
-
-                let new_border_offset = Rect {
-                    left: offset,
-                    top: offset,
-                    right: offset * 2,
-                    bottom: offset * 2,
-                };
-
-                *current_border_offset = Option::from(new_border_offset);
-
+                BORDER_OFFSET.store(offset, Ordering::SeqCst);
                 WindowsApi::invalidate_border_rect()?;
             }
-            SocketMessage::AltFocusHack(enable) => {
-                ALT_FOCUS_HACK.store(enable, Ordering::SeqCst);
+            SocketMessage::AltFocusHack(_) => {
+                tracing::info!("this action is deprecated");
             }
             SocketMessage::ApplicationSpecificConfigurationSchema => {
                 let asc = schema_for!(Vec<ApplicationConfiguration>);
@@ -1363,7 +1350,14 @@ impl WindowManager {
                 reply.write_all(schema.as_bytes())?;
             }
             SocketMessage::StaticConfigSchema => {
-                let socket_message = schema_for!(StaticConfig);
+                let settings = SchemaSettings::default().with(|s| {
+                    s.option_nullable = false;
+                    s.option_add_null_type = false;
+                    s.inline_subschemas = true;
+                });
+
+                let gen = settings.into_generator();
+                let socket_message = gen.into_root_schema_for::<StaticConfig>();
                 let schema = serde_json::to_string_pretty(&socket_message)?;
 
                 reply.write_all(schema.as_bytes())?;
@@ -1458,9 +1452,6 @@ impl WindowManager {
             | SocketMessage::FocusWorkspaceNumber(_) => {
                 let foreground = WindowsApi::foreground_window()?;
                 let foreground_window = Window { hwnd: foreground };
-                let mut rect = WindowsApi::window_rect(foreground_window.hwnd())?;
-                rect.top -= self.invisible_borders.bottom;
-                rect.bottom += self.invisible_borders.bottom;
 
                 let monocle = BORDER_COLOUR_MONOCLE.load(Ordering::SeqCst);
                 if monocle != 0 && self.focused_workspace()?.monocle_container().is_some() {
@@ -1470,14 +1461,18 @@ impl WindowManager {
                     );
                 }
 
-                let stack = BORDER_COLOUR_STACK.load(Ordering::SeqCst);
-                if stack != 0 && self.focused_container()?.windows().len() > 1 {
-                    BORDER_COLOUR_CURRENT
-                        .store(stack, Ordering::SeqCst);
+                // it is not acceptable to fail here; we need to be able to send the event to
+                // subscribers
+                if self.focused_container().is_ok() {
+                    let stack = BORDER_COLOUR_STACK.load(Ordering::SeqCst);
+                    if stack != 0 && self.focused_container()?.windows().len() > 1 {
+                        BORDER_COLOUR_CURRENT
+                            .store(stack, Ordering::SeqCst);
+                    }
                 }
 
                 let border = Border::from(BORDER_HWND.load(Ordering::SeqCst));
-                border.set_position(foreground_window, &self.invisible_borders, false)?;
+                border.set_position(foreground_window, false)?;
             }
             SocketMessage::TogglePause => {
                 let is_paused = self.is_paused;
@@ -1487,7 +1482,7 @@ impl WindowManager {
                     border.hide()?;
                 } else {
                     let focused = self.focused_window()?;
-                    border.set_position(*focused, &self.invisible_borders, true)?;
+                    border.set_position(*focused, true)?;
                     focused.focus(false)?;
                 }
             }
@@ -1497,7 +1492,7 @@ impl WindowManager {
 
                 if tiling_enabled {
                     let focused = self.focused_window()?;
-                    border.set_position(*focused, &self.invisible_borders, true)?;
+                    border.set_position(*focused, true)?;
                     focused.focus(false)?;
                 } else {
                     border.hide()?;

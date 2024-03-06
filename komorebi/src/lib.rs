@@ -2,6 +2,7 @@ pub mod border;
 pub mod com;
 #[macro_use]
 pub mod ring;
+pub mod colour;
 pub mod container;
 pub mod hidden;
 pub mod monitor;
@@ -183,7 +184,7 @@ lazy_static! {
             }
         })
     };
-    static ref DATA_DIR: PathBuf = dirs::data_local_dir().expect("there is no local data directory").join("komorebi");
+    pub static ref DATA_DIR: PathBuf = dirs::data_local_dir().expect("there is no local data directory").join("komorebi");
     pub static ref AHK_EXE: String = {
         let mut ahk: String = String::from("autohotkey.exe");
 
@@ -220,7 +221,6 @@ pub static FINISH_MINIMIZE_ANIMATION: AtomicBool = AtomicBool::new(true);
 pub static INITIAL_CONFIGURATION_LOADED: AtomicBool = AtomicBool::new(false);
 pub static CUSTOM_FFM: AtomicBool = AtomicBool::new(false);
 pub static SESSION_ID: AtomicU32 = AtomicU32::new(0);
-pub static ALT_FOCUS_HACK: AtomicBool = AtomicBool::new(false);
 pub static BORDER_ENABLED: AtomicBool = AtomicBool::new(false);
 pub static BORDER_HWND: AtomicIsize = AtomicIsize::new(0);
 pub static BORDER_HIDDEN: AtomicBool = AtomicBool::new(false);
