@@ -4,61 +4,9 @@
   "description": "The `komorebi.json` static configuration file reference for `v0.1.20`",
   "type": "object",
   "properties": {
-    "active_window_border": {
-      "description": "Display an active window border (default: false)",
-      "type": "boolean"
-    },
-    "display_index_preferences": {
-      "description": "Set display index preferences",
-      "type": "object",
-      "additionalProperties": {
-        "type": "string"
-      }
-    },
-    "active_window_border_colours": {
-      "description": "Active window border colours for different container types",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/ActiveWindowBorderColours"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "active_window_border_offset": {
-      "description": "Offset of the active window border (default: None)",
-      "type": [
-        "integer",
-        "null"
-      ],
-      "format": "int32"
-    },
-    "active_window_border_width": {
-      "description": "Width of the active window border (default: 20)",
-      "type": [
-        "integer",
-        "null"
-      ],
-      "format": "int32"
-    },
-    "alt_focus_hack": {
-      "description": "Always send the ALT key when using focus commands (default: false)",
-      "type": [
-        "boolean",
-        "null"
-      ]
-    },
     "auto_stack_by_category": {
       "description": "Auto stack windows with the same category in the workspace (default: false)",
       "type": "boolean"
-    },
-    "app_specific_configuration_path": {
-      "description": "Path to applications.yaml from komorebi-application-specific-configurations (default: None)",
-      "type": [
-        "string",
-        "null"
-      ]
     },
     "animations": {
       "description": "Configurations for native Windows and Komorebi animations",
@@ -77,161 +25,6 @@
           "type": "boolean"
         }
       }
-    },
-    "border_overflow_applications": {
-      "description": "Identify border overflow applications",
-      "type": [
-        "array",
-        "null"
-      ],
-      "items": {
-        "$ref": "#/definitions/IdWithIdentifier"
-      }
-    },
-    "cross_monitor_move_behaviour": {
-      "description": "Determine what happens when a window is moved across a monitor boundary (default: Swap)",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/MoveBehaviour"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "default_container_padding": {
-      "description": "Global default container padding (default: 10)",
-      "type": [
-        "integer",
-        "null"
-      ],
-      "format": "int32"
-    },
-    "default_workspace_padding": {
-      "description": "Global default workspace padding (default: 10)",
-      "type": [
-        "integer",
-        "null"
-      ],
-      "format": "int32"
-    },
-    "exclude_float_rules": {
-      "description": "Exclude floating rules",
-      "type": [
-        "array",
-        "null"
-      ],
-      "items": {
-        "$ref": "#/definitions/IdWithIdentifier"
-      }
-    },
-    "float_rules": {
-      "description": "Individual window floating rules",
-      "type": [
-        "array",
-        "null"
-      ],
-      "items": {
-        "$ref": "#/definitions/IdWithIdentifier"
-      }
-    },
-    "focus_follows_mouse": {
-      "description": "Determine focus follows mouse implementation (default: None)",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/FocusFollowsMouseImplementation"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "global_work_area_offset": {
-      "description": "Global work area (space used for tiling) offset (default: None)",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Rect"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "invisible_borders": {
-      "description": "Dimensions of Windows' own invisible borders; don't set these yourself unless you are told to",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Rect"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "layered_applications": {
-      "description": "Identify applications that have the WS_EX_LAYERED extended window style",
-      "type": [
-        "array",
-        "null"
-      ],
-      "items": {
-        "$ref": "#/definitions/IdWithIdentifier"
-      }
-    },
-    "manage_rules": {
-      "description": "Individual window force-manage rules",
-      "type": [
-        "array",
-        "null"
-      ],
-      "items": {
-        "$ref": "#/definitions/IdWithIdentifier"
-      }
-    },
-    "monitor_index_preferences": {
-      "description": "Set monitor index preferences",
-      "type": [
-        "object",
-        "null"
-      ],
-      "additionalProperties": {
-        "$ref": "#/definitions/Rect"
-      }
-    },
-    "monitors": {
-      "description": "Monitor and workspace configurations",
-      "type": [
-        "array",
-        "null"
-      ],
-      "items": {
-        "$ref": "#/definitions/MonitorConfig"
-      }
-    },
-    "mouse_follows_focus": {
-      "description": "Enable or disable mouse follows focus (default: true)",
-      "type": [
-        "boolean",
-        "null"
-      ]
-    },
-    "object_name_change_applications": {
-      "description": "Identify applications that send EVENT_OBJECT_NAMECHANGE on launch (very rare)",
-      "type": [
-        "array",
-        "null"
-      ],
-      "items": {
-        "$ref": "#/definitions/IdWithIdentifier"
-      }
-    },
-    "resize_delta": {
-      "description": "Delta to resize windows by (default 50)",
-      "type": [
-        "integer",
-        "null"
-      ],
-      "format": "int32"
     },
     "top_bar": {
       "description": "Configurations for top bar on containers",
@@ -321,16 +114,6 @@
         }
       }
     },
-    "tray_and_multi_window_applications": {
-      "description": "Identify tray and multi-window applications",
-      "type": [
-        "array",
-        "null"
-      ],
-      "items": {
-        "$ref": "#/definitions/IdWithIdentifier"
-      }
-    },
     "unmanage_rules": {
       "description": "Unmanaged windows rules (can work as pinned windows)",
       "type": [
@@ -338,51 +121,83 @@
         "null"
       ],
       "items": {
-        "$ref": "#/definitions/IdWithIdentifier"
+        "type": "object",
+        "required": [
+          "id",
+          "kind"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "Exe",
+              "Class",
+              "Title",
+              "Path"
+            ]
+          },
+          "matching_strategy": {
+            "type": "string",
+            "enum": [
+              "Legacy",
+              "Equals",
+              "StartsWith",
+              "EndsWith",
+              "Contains",
+              "Regex"
+            ]
+          }
+        }
       }
     },
-    "unmanaged_window_operation_behaviour": {
-      "description": "Determine what happens when commands are sent while an unmanaged window is in the foreground (default: Op)",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/OperationBehaviour"
-        },
-        {
-          "type": "null"
+    "exclude_float_rules": {
+      "description": "Exclude floating rules",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "Exe",
+              "Class",
+              "Title",
+              "Path"
+            ]
+          },
+          "matching_strategy": {
+            "type": "string",
+            "enum": [
+              "Legacy",
+              "Equals",
+              "StartsWith",
+              "EndsWith",
+              "Contains",
+              "Regex"
+            ]
+          }
         }
-      ]
+      }
     },
-    "window_container_behaviour": {
-      "description": "Determine what happens when a new window is opened (default: Create)",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/WindowContainerBehaviour"
-        },
-        {
-          "type": "null"
-        }
-      ]
+    "active_window_border": {
+      "description": "Display an active window border (default: false)",
+      "type": "boolean"
     },
-    "window_hiding_behaviour": {
-      "description": "Which Windows signal to use when hiding windows (default: minimize)",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/HidingBehaviour"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    }
-  },
-  "definitions": {
-    "HexColor": {
-      "description": "RGB hex color",
-      "pattern": "^#([a-fA-F0-9]{6})$",
-      "default": "#FFFFFF",
-      "type": "string"
-    },
-    "ActiveWindowBorderColours": {
+    "active_window_border_colours": {
+      "description": "Active window border colours for different container types",
       "type": "object",
       "required": [
         "monocle",
@@ -506,14 +321,9 @@
         }
       }
     },
-    "ApplicationIdentifier": {
-      "type": "string",
-      "enum": [
-        "Path",
-        "Exe",
-        "Class",
-        "Title"
-      ]
+    "app_specific_configuration_path": {
+      "description": "Path to applications.yaml from komorebi-application-specific-configurations (default: None)",
+      "type": "string"
     },
     "border_offset": {
       "description": "Offset of the window border (default: -1)",
@@ -1286,6 +1096,14 @@
           ]
         }
       ]
+    }
+  },
+  "definitions": {
+    "HexColor": {
+      "description": "RGB hex color",
+      "pattern": "^#([a-fA-F0-9]{6})$",
+      "default": "#FFFFFF",
+      "type": "string"
     }
   }
 }
