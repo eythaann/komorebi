@@ -1,8 +1,8 @@
 use crate::com::SetCloak;
 use crate::static_config::applications_configuration::AppConfig;
-use crate::UNMANAGE_IDENTIFIERS;
-use crate::NATIVE_ANIMATION_DELAY;
 use crate::static_config::applications_configuration::SETTINGS_BY_APP;
+use crate::NATIVE_ANIMATION_DELAY;
+use crate::UNMANAGE_IDENTIFIERS;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::fmt::Display;
@@ -36,10 +36,10 @@ use crate::window_manager_event::WindowManagerEvent;
 use crate::windows_api::WindowsApi;
 use crate::FLOAT_IDENTIFIERS;
 use crate::HIDDEN_HWNDS;
-use crate::MAXIMIZED_HWNDS;
 use crate::HIDING_BEHAVIOUR;
 use crate::LAYERED_WHITELIST;
 use crate::MANAGE_IDENTIFIERS;
+use crate::MAXIMIZED_HWNDS;
 use crate::NO_TITLEBAR;
 use crate::PERMAIGNORE_CLASSES;
 use crate::REGEX_IDENTIFIERS;
@@ -151,15 +151,14 @@ impl Window {
         let half_width = work_area.right / 2;
         let half_weight = work_area.bottom / 2;
 
-        self.set_position(
-            &Rect {
-                left: work_area.left + ((work_area.right - half_width) / 2),
-                top: work_area.top + ((work_area.bottom - half_weight) / 2),
-                right: half_width,
-                bottom: half_weight,
-            },
-            true,
-        )
+        let position = &Rect {
+            left: work_area.left + ((work_area.right - half_width) / 2),
+            top: work_area.top + ((work_area.bottom - half_weight) / 2),
+            right: half_width,
+            bottom: half_weight,
+        };
+
+        self.set_position(position, true)
     }
 
     pub fn set_position(&self, layout: &Rect, top: bool) -> Result<()> {
@@ -210,7 +209,9 @@ impl Window {
     }
 
     fn wait_native_animation(self) {
-        sleep(Duration::from_millis(NATIVE_ANIMATION_DELAY.load(Ordering::SeqCst)));
+        sleep(Duration::from_millis(
+            NATIVE_ANIMATION_DELAY.load(Ordering::SeqCst),
+        ));
     }
 
     pub fn restore(self) -> Result<()> {
@@ -224,7 +225,7 @@ impl Window {
                 if wait {
                     self.wait_native_animation();
                 }
-            },
+            }
             HidingBehaviour::Cloak => SetCloak(self.hwnd(), 1, 0),
         };
         Ok(())
@@ -247,13 +248,14 @@ impl Window {
         programmatically_maximized_hwnds.contains(&self.hwnd)
     }
 
-    pub fn maximize(self) {
+    pub fn maximize(self) -> Result<()> {
         let mut programmatically_maximized_hwnds = MAXIMIZED_HWNDS.lock();
         if !programmatically_maximized_hwnds.contains(&self.hwnd) {
             programmatically_maximized_hwnds.push(self.hwnd);
         }
         self.remove_from_hidden_hwnds();
         WindowsApi::maximize_window(self.hwnd());
+        WindowsApi::raise_window_to_notopmost(self.hwnd())
     }
 
     pub fn unmaximize(self) {
@@ -507,9 +509,18 @@ impl Window {
     }
 
     pub fn should_float(self) -> bool {
-        if let (Ok(title), Ok(exe_name), Ok(class), Ok(path)) = (self.title(), self.exe(), self.class(), self.path()) {
+        if let (Ok(title), Ok(exe_name), Ok(class), Ok(path)) =
+            (self.title(), self.exe(), self.class(), self.path())
+        {
             let _should_act = |identifiers: &[IdWithIdentifier]| -> bool {
-                should_act(&title, &exe_name, &class, &path, identifiers, &REGEX_IDENTIFIERS.lock())
+                should_act(
+                    &title,
+                    &exe_name,
+                    &class,
+                    &path,
+                    identifiers,
+                    &REGEX_IDENTIFIERS.lock(),
+                )
             };
             let should_float = _should_act(&FLOAT_IDENTIFIERS.lock());
             let is_forced = _should_act(&MANAGE_IDENTIFIERS.lock());
@@ -539,7 +550,14 @@ fn window_is_eligible(
     let regex_identifiers = REGEX_IDENTIFIERS.lock();
 
     let _should_act = |identifiers: &[IdWithIdentifier]| -> bool {
-        should_act(title, exe_name, class, path, identifiers, &regex_identifiers)
+        should_act(
+            title,
+            exe_name,
+            class,
+            path,
+            identifiers,
+            &regex_identifiers,
+        )
     };
 
     let should_not_manage = _should_act(&UNMANAGE_IDENTIFIERS.lock());

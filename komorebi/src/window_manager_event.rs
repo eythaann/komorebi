@@ -30,11 +30,15 @@ pub enum WindowManagerEvent {
     Unmanage(Window),
     Raise(Window),
     DisplayChange(Window),
+    LocationChange(Window),
 }
 
 impl Display for WindowManagerEvent {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::LocationChange(window) => {
+                write!(f, "LocationChange (Window: {window})")
+            }
             Self::ForceUpdate(window) => {
                 write!(f, "ForceUpdate (Window: {window})")
             }
@@ -109,11 +113,14 @@ impl WindowManagerEvent {
             | Self::DisplayChange(window)
             | Self::Unmanage(window) => window,
             | Self::ForceUpdate(window) => window,
+            | Self::LocationChange(window) => window,
         }
     }
 
     pub fn from_win_event(winevent: WinEvent, window: Window) -> Option<Self> {
         match winevent {
+            WinEvent::ObjectLocationChange => Option::from(Self::LocationChange(window)),
+
             WinEvent::ObjectDestroy => Option::from(Self::Destroy(winevent, window)),
 
             WinEvent::ObjectHide => Option::from(Self::Hide(winevent, window)),

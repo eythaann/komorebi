@@ -140,18 +140,18 @@ impl Workspace {
         Ok(())
     }
 
-    pub fn hide(&mut self, omit: Option<HWND>) -> Result<()> {
-        for window in self.floating_windows_mut().iter_mut().rev() {
+    pub fn hide(&self, omit: Option<HWND>) -> Result<()> {
+        for window in self.floating_windows().iter().rev() {
             if omit.is_none() || omit.unwrap() != window.hwnd() {
                 window.hide();
             }
         }
 
-        for container in self.containers_mut().iter_mut().rev() {
+        for container in self.containers().iter().rev() {
             container.hide(omit)?;
         }
 
-        if let Some(container) = self.monocle_container_mut() {
+        if let Some(container) = self.monocle_container() {
             container.hide(omit)?;
         }
         Ok(())
@@ -182,9 +182,9 @@ impl Workspace {
         None
     }
 
-    pub fn restore(&mut self, mouse_follows_focus: bool) -> Result<()> {
+    pub fn restore(&self, mouse_follows_focus: bool) -> Result<()> {
         if let Some(maximized) = self.get_window_to_be_maximized() {
-            maximized.maximize();
+            maximized.maximize()?;
             maximized.focus(mouse_follows_focus)?;
 
             for window in self.floating_windows() {
@@ -196,11 +196,11 @@ impl Workspace {
             return Ok(());
         }
 
-        for container in self.containers_mut() {
+        for container in self.containers() {
             container.restore()?;
         }
 
-        if let Some(container) = self.monocle_container_mut() {
+        if let Some(container) = self.monocle_container() {
             container.restore()?;
         }
 
@@ -208,7 +208,7 @@ impl Workspace {
             window.restore()?;
         }
 
-        if let Some(container) = self.focused_container_mut() {
+        if let Some(container) = self.focused_container() {
             if let Some(window) = container.windows().get(container.focused_window_idx()) {
                 window.focus(mouse_follows_focus)?;
             }
@@ -220,6 +220,19 @@ impl Workspace {
     pub fn update(&mut self, work_area: &Rect, offset: Option<Rect>) -> Result<()> {
         if !INITIAL_CONFIGURATION_LOADED.load(Ordering::SeqCst) {
             return Ok(());
+        }
+
+        if let Some(maximized) = self.get_window_to_be_maximized() {
+            for window in self.floating_windows() {
+                if window.hwnd != maximized.hwnd {
+                    WindowsApi::raise_window_to_topmost(window.hwnd())?;
+                }
+            }
+            return Ok(());
+        }
+
+        for window in self.floating_windows() {
+            WindowsApi::raise_window_to_notopmost(window.hwnd())?;
         }
 
         let container_padding = self.container_padding();
@@ -853,21 +866,28 @@ impl Workspace {
         Ok(())
     }
 
-    pub fn maximize_focused_window(&mut self) -> Result<()> {
-        let focused_window = self
-            .focused_window()
-            .ok_or_else(|| anyhow!("there is no window"))?;
-        focused_window.maximize();
-        self.hide(Some(focused_window.hwnd()))?;
-        Ok(())
+    pub fn maximize_window(&self, window: &Window) -> Result<()> {
+        window.maximize()?;
+        self.hide(Some(window.hwnd()))
     }
 
-    pub fn unmaximize_focused_window(&mut self, mouse_follows_focus: bool) -> Result<()> {
+    pub fn maximize_focused_window(&self) -> Result<()> {
         let focused_window = self
             .focused_window()
             .ok_or_else(|| anyhow!("there is no window"))?;
-        focused_window.unmaximize();
+        self.maximize_window(focused_window)
+    }
+
+    pub fn unmaximize_window(&self, mouse_follows_focus: bool, window: &Window) -> Result<()> {
+        window.unmaximize();
         self.restore(mouse_follows_focus)
+    }
+
+    pub fn unmaximize_focused_window(&self, mouse_follows_focus: bool) -> Result<()> {
+        let focused_window = self
+            .focused_window()
+            .ok_or_else(|| anyhow!("there is no window"))?;
+        self.unmaximize_window(mouse_follows_focus, focused_window)
     }
 
     fn enforce_resize_constraints(&mut self) {

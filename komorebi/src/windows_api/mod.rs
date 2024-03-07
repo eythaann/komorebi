@@ -108,6 +108,7 @@ use windows::Win32::UI::WindowsAndMessaging::GW_HWNDNEXT;
 use windows::Win32::UI::WindowsAndMessaging::HWND_BOTTOM;
 use windows::Win32::UI::WindowsAndMessaging::HWND_NOTOPMOST;
 use windows::Win32::UI::WindowsAndMessaging::HWND_TOP;
+use windows::Win32::UI::WindowsAndMessaging::HWND_TOPMOST;
 use windows::Win32::UI::WindowsAndMessaging::LWA_ALPHA;
 use windows::Win32::UI::WindowsAndMessaging::LWA_COLORKEY;
 use windows::Win32::UI::WindowsAndMessaging::SET_WINDOW_POS_FLAGS;
@@ -377,6 +378,16 @@ impl WindowsApi {
 
     pub fn bring_window_to_top(hwnd: HWND) -> Result<()> {
         unsafe { BringWindowToTop(hwnd) }.process()
+    }
+
+    pub fn raise_window_to_notopmost(hwnd: HWND) -> Result<()> {
+        let flags = SetWindowPosition::NO_MOVE | SetWindowPosition::NO_SIZE;
+        Self::set_window_pos(hwnd, &Rect::default(), HWND_NOTOPMOST, flags.bits())
+    }
+
+    pub fn raise_window_to_topmost(hwnd: HWND) -> Result<()> {
+        let flags = SetWindowPosition::NO_MOVE | SetWindowPosition::NO_SIZE;
+        Self::set_window_pos(hwnd, &Rect::default(), HWND_TOPMOST, flags.bits())
     }
 
     pub fn raise_window(hwnd: HWND) -> Result<()> {

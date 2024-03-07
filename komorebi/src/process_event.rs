@@ -1,6 +1,8 @@
 use std::fs::OpenOptions;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
+use std::thread::sleep;
+use std::time::Duration;
 
 use color_eyre::eyre::anyhow;
 use color_eyre::Result;
@@ -32,6 +34,7 @@ use crate::BORDER_HWND;
 use crate::BORDER_OFFSET;
 use crate::BORDER_WIDTH;
 use crate::DATA_DIR;
+use crate::FINISH_MINIMIZE_ANIMATION;
 use crate::HIDDEN_HWNDS;
 use crate::REGEX_IDENTIFIERS;
 use crate::TRAY_AND_MULTI_WINDOW_IDENTIFIERS;
@@ -172,29 +175,34 @@ impl WindowManager {
                 }
 
                 if hide {
+                    if FINISH_MINIMIZE_ANIMATION.load(Ordering::SeqCst) {
+                        sleep(Duration::from_millis(100));
+                    }
                     self.remove_window(window)?;
                 }
             }
-            WindowManagerEvent::MouseCaptureStart(_, _) => {
-                tracing::trace!(
-                    "only reaping orphans and enforcing workspace rules for mouse capture event"
-                );
-                return Ok(());
-            }
-            WindowManagerEvent::MouseCaptureEnd(_, window) => {
+            WindowManagerEvent::LocationChange(window) => {
+                let mouse_follows_focus = self.mouse_follows_focus;
+                let workspace = self.focused_workspace_mut()?;
+                if !workspace.contains_window(window.hwnd) {
+                    return Ok(());
+                }
+
                 let is_programmatically_maximized = window.is_programmatically_maximized();
                 let currently_is_maximized = window.is_maximized();
 
                 if currently_is_maximized != is_programmatically_maximized {
-                    let mouse_follows_focus = self.mouse_follows_focus;
-                    let workspace = self.focused_workspace_mut()?;
                     if currently_is_maximized {
-                        workspace.maximize_focused_window()?;
+                        workspace.maximize_window(window)?;
                     } else if !window.is_miminized() {
-                        workspace.unmaximize_focused_window(mouse_follows_focus)?;
+                        workspace.unmaximize_window(mouse_follows_focus, window)?;
                         self.update_focused_workspace(false)?;
                     }
                 }
+                return Ok(());
+            }
+            WindowManagerEvent::MouseCaptureEnd(..) | WindowManagerEvent::MouseCaptureStart(..) => {
+                tracing::trace!("only reaping orphans for mouse capture event");
                 return Ok(());
             }
             WindowManagerEvent::Hide(_, window) => {
