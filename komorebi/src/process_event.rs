@@ -31,8 +31,6 @@ use crate::BORDER_COLOUR_STACK;
 use crate::BORDER_ENABLED;
 use crate::BORDER_HIDDEN;
 use crate::BORDER_HWND;
-use crate::BORDER_OFFSET;
-use crate::BORDER_WIDTH;
 use crate::DATA_DIR;
 use crate::FINISH_MINIMIZE_ANIMATION;
 use crate::HIDDEN_HWNDS;
@@ -389,9 +387,9 @@ impl WindowManager {
 
                 let focused_container_idx = workspace.focused_container_idx();
 
-                let new_position = WindowsApi::window_rect(window.hwnd())?;
+                let new_position = WindowsApi::legacy_window_rect(window.hwnd())?;
 
-                let old_position = *workspace
+                let mut old_position = *workspace
                     .latest_layout()
                     .get(focused_container_idx)
                     // If the move was to another monitor with an empty workspace, the
@@ -405,6 +403,7 @@ impl WindowManager {
                 let mut moved_across_monitors = old_position == Rect::default();
 
                 let mut is_move = false;
+
                 if let Some(pending) = pending {
                     let (origin_monitor_idx, _, _) = pending.from;
                     // If we didn't move to another monitor with an empty workspace, it is
@@ -417,19 +416,9 @@ impl WindowManager {
 
                     // If we have moved across the monitors, use that override, otherwise determine
                     // if a move has taken place by ruling out a resize
-                    is_move = moved_across_monitors
-                        || is_moving(
-                            pending.old_size,
-                            WindowsApi::legacy_window_rect(window.hwnd())?,
-                        );
+                    is_move = moved_across_monitors || is_moving(pending.old_size, new_position);
+                    old_position = pending.old_size
                 }
-
-                let resize = Rect {
-                    left: new_position.left - old_position.left,
-                    top: new_position.top - old_position.top,
-                    right: new_position.right - old_position.right,
-                    bottom: new_position.bottom - old_position.bottom,
-                };
 
                 if is_move {
                     tracing::info!("moving with mouse");
@@ -527,6 +516,13 @@ impl WindowManager {
                             }};
                         }
 
+                    let resize = Rect {
+                        left: new_position.left - old_position.left,
+                        top: new_position.top - old_position.top,
+                        right: new_position.right - old_position.right,
+                        bottom: new_position.bottom - old_position.bottom,
+                    };
+
                     if resize.left != 0 {
                         ops.push(resize_op!(resize.left, >, OperationDirection::Left));
                     }
@@ -535,14 +531,11 @@ impl WindowManager {
                         ops.push(resize_op!(resize.top, >, OperationDirection::Up));
                     }
 
-                    let top_left_constant =
-                        BORDER_WIDTH.load(Ordering::SeqCst) + BORDER_OFFSET.load(Ordering::SeqCst);
-
-                    if resize.right != 0 && resize.left == top_left_constant {
+                    if resize.right != 0 && resize.left == 0 {
                         ops.push(resize_op!(resize.right, <, OperationDirection::Right));
                     }
 
-                    if resize.bottom != 0 && resize.top == top_left_constant {
+                    if resize.bottom != 0 && resize.top == 0 {
                         ops.push(resize_op!(resize.bottom, <, OperationDirection::Down));
                     }
 
