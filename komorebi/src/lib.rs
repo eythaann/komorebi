@@ -145,25 +145,13 @@ lazy_static! {
         },
         IdWithIdentifier {
             kind: ApplicationIdentifier::Exe,
-            id: String::from("komorebi.exe"),
-            matching_strategy: Option::from(MatchingStrategy::Equals),
+            id: String::from("Komorebi"),
+            matching_strategy: Option::from(MatchingStrategy::Contains),
         },
         IdWithIdentifier {
             kind: ApplicationIdentifier::Exe,
-            id: String::from("Seelen.exe"),
-            matching_strategy: Option::from(MatchingStrategy::Equals),
-        },
-        // TODO remove on release 2.0
-        IdWithIdentifier {
-            kind: ApplicationIdentifier::Exe,
-            id: String::from("Komorebi UI.exe"),
-            matching_strategy: Option::from(MatchingStrategy::Equals),
-        },
-        // TODO remove on release
-        IdWithIdentifier {
-            kind: ApplicationIdentifier::Exe,
-            id: String::from("komorebi-ui.exe"),
-            matching_strategy: Option::from(MatchingStrategy::Equals),
+            id: String::from("komorebi"),
+            matching_strategy: Option::from(MatchingStrategy::Contains),
         },
     ]));
     static ref FLOAT_IDENTIFIERS: Arc<Mutex<Vec<IdWithIdentifier>>> = Arc::new(Mutex::new(vec![]));
