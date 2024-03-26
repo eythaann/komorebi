@@ -1096,6 +1096,9 @@
           ]
         }
       ]
+    },
+    "seelenweg": {
+      "$ref": "#/definitions/SeelenWegState"
     }
   },
   "definitions": {
@@ -1104,6 +1107,39 @@
       "pattern": "^#([a-fA-F0-9]{6})$",
       "default": "#FFFFFF",
       "type": "string"
+    },
+    "SeelenWegMode": {
+      "type": "string",
+      "enum": [
+        "Full-Width",
+        "Min-Content"
+      ]
+    },
+    "SeelenWegState": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "mode": {
+          "$ref": "#/definitions/SeelenWegMode"
+        },
+        "size": {
+          "type": "number"
+        },
+        "zoom_size": {
+          "type": "number"
+        },
+        "margin": {
+          "type": "number"
+        },
+        "padding": {
+          "type": "number"
+        },
+        "space_between_items": {
+          "type": "number"
+        }
+      }
     }
   }
 }
