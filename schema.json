@@ -1099,6 +1099,9 @@
     },
     "seelenweg": {
       "$ref": "#/definitions/SeelenWegState"
+    },
+    "theme_filename": {
+      "type": "string"
     }
   },
   "definitions": {
