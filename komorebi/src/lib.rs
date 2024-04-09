@@ -145,7 +145,7 @@ lazy_static! {
         },
         IdWithIdentifier {
             kind: ApplicationIdentifier::Exe,
-            id: String::from("Komorebi"),
+            id: String::from("Seelen"),
             matching_strategy: Option::from(MatchingStrategy::Contains),
         },
         IdWithIdentifier {
