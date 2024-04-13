@@ -1124,6 +1124,9 @@
         "enabled": {
           "type": "boolean"
         },
+        "visible_separators": {
+          "type": "boolean"
+        },
         "mode": {
           "$ref": "#/definitions/SeelenWegMode"
         },
